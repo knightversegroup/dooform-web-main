@@ -89,12 +89,12 @@ const navigationItems: NavItem[] = [
   },
   {
     label: "แบบฟอร์ม",
-    href: "/documents",
+    href: "/forms",
     hasDropdown: false,
   },
   {
-    label: "Knight Group",
-    href: "/knight-group",
+    label: "เอกสารประกอบ",
+    href: "/documents",
     hasDropdown: false,
   },
 ];
