@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageCircle, Users, HelpCircle, ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 interface CommunityTile {
     icon: React.ReactNode;
@@ -46,14 +47,21 @@ export default function Community({ background = "alt" }: CommunityProps) {
             <div className="container-main section-padding">
                 {/* Section Title */}
                 <h2 className="text-h2 text-foreground mb-12">
-                    ชุมชนผู้ใช้งาน
+                    สำหรับธุรกิจ
                 </h2>
 
                 <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
                     {/* Left side - Video */}
                     <div className="flex-1 lg:max-w-[55%]">
                         <div className="bg-surface-alt rounded-xl overflow-hidden aspect-video">
-                            <video
+                            <Image
+                                src="/cover-1.webp"
+                                alt="Community video placeholder"
+                                width={800}
+                                height={450}
+                                className="w-full h-full object-cover"
+                            />
+                            {/* <video
                                 className="w-full h-full object-cover"
                                 autoPlay
                                 muted
@@ -63,7 +71,7 @@ export default function Community({ background = "alt" }: CommunityProps) {
                                 suppressHydrationWarning
                             >
                                 <source src="/video.mp4" type="video/mp4" />
-                            </video>
+                            </video> */}
                         </div>
                     </div>
 
