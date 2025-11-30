@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, X, ChevronDown, ChevronUp, CheckCircle, Sparkles, Globe, Building2, Users, Loader2 } from "lucide-react";
+import { Search, X, ChevronDown, ChevronUp, CheckCircle, Sparkles, Globe, Building2, Users, Loader2, Plus } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { Template, TemplateType, Tier } from "@/lib/api/types";
 
@@ -409,13 +409,22 @@ export default function FormTemplateList() {
                     {/* Right Content - Template List */}
                     <main className="flex-1">
                         {/* Results Header */}
-                        <div className="mb-6">
-                            <h1 className="text-h2 text-foreground mb-2">
-                                เทมเพลตเอกสาร
-                            </h1>
-                            <p className="text-body text-text-muted">
-                                {loading ? 'กำลังโหลด...' : `พบ ${filteredTemplates.length} รายการ`}
-                            </p>
+                        <div className="mb-6 flex items-start justify-between">
+                            <div>
+                                <h1 className="text-h2 text-foreground mb-2">
+                                    เทมเพลตเอกสาร
+                                </h1>
+                                <p className="text-body text-text-muted">
+                                    {loading ? 'กำลังโหลด...' : `พบ ${filteredTemplates.length} รายการ`}
+                                </p>
+                            </div>
+                            <Link
+                                href="/forms/new"
+                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-body-sm font-medium"
+                            >
+                                <Plus className="w-4 h-4" />
+                                เพิ่มเทมเพลต
+                            </Link>
                         </div>
 
                         {/* Loading State */}

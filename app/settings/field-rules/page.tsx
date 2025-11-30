@@ -1075,18 +1075,6 @@ export default function FieldRulesPage() {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            {activeTab === "field" && (
-                                <>
-                                    <Button variant="secondary" size="sm" onClick={handleInitializeDefaults}>
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        สร้างกฎเริ่มต้น
-                                    </Button>
-                                    <Button variant="primary" size="sm" onClick={handleCreateNew}>
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        เพิ่มกฎใหม่
-                                    </Button>
-                                </>
-                            )}
                             {activeTab === "entity" && (
                                 <>
                                     <Button variant="secondary" size="sm" onClick={handleInitializeEntityDefaults}>
