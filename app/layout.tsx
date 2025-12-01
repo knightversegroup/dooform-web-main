@@ -7,8 +7,9 @@ import {
 import "./globals.css";
 import Navbar from "./components/Layout/Navbar";
 import Footer from "./components/Layout/Footer";
-import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
 import { AuthProvider } from "@/lib/auth/context";
+import { CookieConsentProvider } from "@/lib/cookie/context";
+import { CookieConsentBanner, Analytics } from "./components/CookieConsent";
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   variable: "--font-ibm-plex-sans-thai",
@@ -302,16 +303,18 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <GoogleTagManager gtmId="GTM-WW8R39NW" />
-      <GoogleAnalytics gaId="G-NQ0QY7SS77" />
       <body
         className={`${ibmPlexSansThai.variable} ${ibmPlexSansThaiLooped.variable} ${prompt.variable} antialiased`}
       >
-        <AuthProvider>
-          <Navbar />
-          {children}
-          <Footer />
-        </AuthProvider>
+        <CookieConsentProvider>
+          <Analytics />
+          <AuthProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </AuthProvider>
+          <CookieConsentBanner />
+        </CookieConsentProvider>
       </body>
     </html>
   );

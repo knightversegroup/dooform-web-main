@@ -1,8 +1,15 @@
 export interface DocItem {
     label: string;
-    href: string;
+    href?: string;
     description?: string;
     order?: number;
+    children?: DocItem[];
+}
+
+export interface DocCategory {
+    category: string;
+    order?: number;
+    items: DocItem[];
 }
 
 export interface DocsConfig {
@@ -43,7 +50,19 @@ export function getBreadcrumbItems(pathname: string): BreadcrumbItem[] {
         items.push({ label: docsConfig.title, href: docsConfig.basePath });
 
         if (pathname !== docsConfig.basePath) {
-            items.push({ label: pathnameToLabel(pathname) });
+            // Split the path after /documents/ and create breadcrumb for each segment
+            const segments = pathname.replace("/documents/", "").split("/");
+            let currentPath = "/documents";
+
+            segments.forEach((segment, index) => {
+                currentPath += `/${segment}`;
+                const isLast = index === segments.length - 1;
+
+                items.push({
+                    label: folderToLabel(segment),
+                    href: isLast ? undefined : currentPath,
+                });
+            });
         } else {
             items.push({ label: "Getting Started" });
         }

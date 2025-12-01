@@ -1,5 +1,4 @@
 import { Sidebar } from "@/app/components/ui/Sidebar";
-import { docsConfig } from "./config";
 import { getDocNavItems } from "./getNavItems";
 import { DocBreadcrumb } from "./DocBreadcrumb";
 
@@ -8,7 +7,7 @@ export default function DocumentsLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const navItems = getDocNavItems();
+    const categories = getDocNavItems();
 
     return (
         <div className="bg-background font-sans min-h-screen">
@@ -16,8 +15,8 @@ export default function DocumentsLayout({
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
                     {/* Sidebar - Left column */}
                     <aside className="w-full lg:w-64 xl:w-72 shrink-0">
-                        <div className="lg:sticky lg:top-24">
-                            <Sidebar title={docsConfig.title} items={navItems} />
+                        <div className="lg:sticky lg:top-32">
+                            <Sidebar categories={categories} />
                         </div>
                     </aside>
 
