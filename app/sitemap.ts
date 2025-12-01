@@ -24,18 +24,12 @@ function getDocumentSlugs(): string[] {
           const fileNameWithoutExt = entry.name.replace(/\.(mdx|md)$/, "");
 
           // page.mdx or same-name-as-folder.mdx -> folder route
-          if (
-            entry.name === "page.mdx" ||
-            entry.name === "page.md" ||
-            fileNameWithoutExt === folderName
-          ) {
+          if (entry.name === "page.mdx" || entry.name === "page.md" || fileNameWithoutExt === folderName) {
             if (basePath.length > 0) {
               slugs.push(`/documents/${basePath.join("/")}`);
             }
           } else {
-            slugs.push(
-              `/documents/${[...basePath, fileNameWithoutExt].join("/")}`
-            );
+            slugs.push(`/documents/${[...basePath, fileNameWithoutExt].join("/")}`);
           }
         } else if (entry.isDirectory()) {
           scanDir(fullPath, [...basePath, entry.name]);
