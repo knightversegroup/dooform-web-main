@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { ChevronDown, Search, X, Menu as MenuIcon } from "lucide-react";
+import { ChevronDown, Search, X, Menu as MenuIcon, LogOut, Settings, History, Sliders } from "lucide-react";
+
+const DEFAULT_PROFILE_IMAGE = "/profile_default.webp";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/Button";
+import { useAuth } from "@/lib/auth/context";
 
 interface MobileDropdownProps {
   item: NavItemWithDropdown;
@@ -102,6 +105,12 @@ const navigationItems: NavItem[] = [
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
 
   return (
     <header role="banner" className="sticky top-0 z-50 bg-background border-b border-border-default font-sans">
@@ -143,14 +152,86 @@ export default function Navbar() {
 
             {/* Tools - Desktop */}
             <div className="hidden lg:flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Button href="/register" variant="secondary">
-                  ลงทะเบียน
-                </Button>
-                <Button href="/login" variant="primary">
-                  เข้าสู่ระบบ
-                </Button>
-              </div>
+              {isLoading ? (
+                <div className="w-8 h-8 rounded-full bg-surface-alt animate-pulse" />
+              ) : isAuthenticated && user ? (
+                <Menu as="div" className="relative">
+                  <MenuButton className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-alt transition-colors">
+                    <Image
+                        src={user.picture_url || DEFAULT_PROFILE_IMAGE}
+                        alt={user.display_name || user.email || "Profile"}
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover w-8 h-8"
+                      />
+                    <span className="text-sm font-medium text-text-default">
+                      {user.display_name || user.first_name || user.email?.split("@")[0] || "User"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-text-muted" />
+                  </MenuButton>
+                  <MenuItems className="absolute right-0 mt-1 w-56 bg-background border border-border-default rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 border-b border-border-default">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {user.display_name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email}
+                      </p>
+                      <p className="text-xs text-text-muted truncate">{user.email}</p>
+                    </div>
+                    <MenuItem>
+                      {({ focus }: { focus: boolean }) => (
+                        <Link
+                          href="/history"
+                          className={`flex items-center gap-2 px-4 py-2 text-sm ${focus ? "bg-surface-alt text-foreground" : "text-text-default"}`}
+                        >
+                          <History className="w-4 h-4" />
+                          ประวัติเอกสาร
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }: { focus: boolean }) => (
+                        <Link
+                          href="/profile"
+                          className={`flex items-center gap-2 px-4 py-2 text-sm ${focus ? "bg-surface-alt text-foreground" : "text-text-default"}`}
+                        >
+                          <Settings className="w-4 h-4" />
+                          ตั้งค่าบัญชี
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }: { focus: boolean }) => (
+                        <Link
+                          href="/settings/field-rules"
+                          className={`flex items-center gap-2 px-4 py-2 text-sm ${focus ? "bg-surface-alt text-foreground" : "text-text-default"}`}
+                        >
+                          <Sliders className="w-4 h-4" />
+                          กฎการตรวจจับช่อง
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }: { focus: boolean }) => (
+                        <button
+                          onClick={handleLogout}
+                          className={`flex items-center gap-2 w-full px-4 py-2 text-sm text-left ${focus ? "bg-surface-alt text-red-600" : "text-red-500"}`}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          ออกจากระบบ
+                        </button>
+                      )}
+                    </MenuItem>
+                  </MenuItems>
+                </Menu>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button href="/register" variant="secondary">
+                    ลงทะเบียน
+                  </Button>
+                  <Button href="/login" variant="primary">
+                    เข้าสู่ระบบ
+                  </Button>
+                </div>
+              )}
 
               {/* Search bar - Desktop */}
               <div className="flex items-center border border-border-default rounded-full px-3 py-1.5">
@@ -279,24 +360,83 @@ export default function Navbar() {
                 </button>
               </div>
 
-              <div className="flex gap-2 mb-6">
-                <Button
-                  href="/register"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  ลงทะเบียน
-                </Button>
-                <Button
-                  href="/login"
-                  variant="primary"
-                  className="flex-1"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  เข้าสู่ระบบ
-                </Button>
-              </div>
+              {isAuthenticated && user ? (
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 p-4 bg-surface-alt rounded-lg mb-4">
+                    <Image
+                        src={user.picture_url || DEFAULT_PROFILE_IMAGE}
+                        alt={user.display_name || user.email || "Profile"}
+                        width={48}
+                        height={48}
+                        className="rounded-full object-cover w-12 h-12"
+                      />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {user.display_name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email}
+                      </p>
+                      <p className="text-xs text-text-muted truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Button
+                      href="/history"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <History className="w-4 h-4 mr-2" />
+                      ประวัติเอกสาร
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        href="/profile"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        ตั้งค่าบัญชี
+                      </Button>
+                      <Button
+                        href="/settings/field-rules"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Sliders className="w-4 h-4 mr-2" />
+                        กฎตรวจจับช่อง
+                      </Button>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      className="w-full !text-red-500 !border-red-200 hover:!bg-red-50"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      ออกจากระบบ
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 mb-6">
+                  <Button
+                    href="/register"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    ลงทะเบียน
+                  </Button>
+                  <Button
+                    href="/login"
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    เข้าสู่ระบบ
+                  </Button>
+                </div>
+              )}
 
               <nav role="navigation" aria-label="เมนูหลัก">
                 <ul className="flex flex-col">

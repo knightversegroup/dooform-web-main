@@ -1,19 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, MapPin, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, X, ChevronDown, ChevronUp, CheckCircle, Sparkles, Globe, Building2, Users, Loader2, Plus } from "lucide-react";
+import { apiClient } from "@/lib/api/client";
+import { Template, TemplateType, Tier } from "@/lib/api/types";
 
 // Types
-interface FormTemplate {
-    id: string;
-    title: string;
-    category: string;
-    department: string;
-    type: string;
-    tags: string[];
-}
-
 interface FilterSection {
     id: string;
     title: string;
@@ -21,91 +14,14 @@ interface FilterSection {
     expanded?: boolean;
 }
 
-// Sample data
-const formTemplates: FormTemplate[] = [
-    {
-        id: "1",
-        title: "แบบฟอร์มขอลางาน (Leave Request Form)",
-        category: "ทรัพยากรบุคคล",
-        department: "HR",
-        type: "ราชการ",
-        tags: ["ลางาน", "HR", "บุคคล"],
-    },
-    {
-        id: "2",
-        title: "แบบฟอร์มเบิกค่าใช้จ่าย (Expense Claim Form)",
-        category: "การเงิน",
-        department: "Finance",
-        type: "ราชการ",
-        tags: ["การเงิน", "เบิกจ่าย"],
-    },
-    {
-        id: "3",
-        title: "แบบฟอร์มขออนุมัติโครงการ (Project Approval Form)",
-        category: "บริหารโครงการ",
-        department: "Management",
-        type: "ราชการ",
-        tags: ["โครงการ", "อนุมัติ"],
-    },
-    {
-        id: "4",
-        title: "แบบฟอร์มประเมินผลงาน (Performance Evaluation Form)",
-        category: "ทรัพยากรบุคคล",
-        department: "HR",
-        type: "เอกชน",
-        tags: ["ประเมิน", "HR"],
-    },
-    {
-        id: "5",
-        title: "แบบฟอร์มขอใช้ห้องประชุม (Meeting Room Request)",
-        category: "สำนักงาน",
-        department: "Admin",
-        type: "เอกชน",
-        tags: ["ห้องประชุม", "จอง"],
-    },
-    {
-        id: "6",
-        title: "แบบฟอร์มรายงานปัญหา (Issue Report Form)",
-        category: "IT Support",
-        department: "IT",
-        type: "ทั่วไป",
-        tags: ["IT", "รายงาน", "ปัญหา"],
-    },
-    {
-        id: "7",
-        title: "แบบฟอร์มสมัครงาน (Job Application Form)",
-        category: "ทรัพยากรบุคคล",
-        department: "HR",
-        type: "ทั่วไป",
-        tags: ["สมัครงาน", "HR"],
-    },
-    {
-        id: "8",
-        title: "แบบฟอร์มขอสวัสดิการ (Welfare Request Form)",
-        category: "ทรัพยากรบุคคล",
-        department: "HR",
-        type: "ราชการ",
-        tags: ["สวัสดิการ", "HR"],
-    },
-];
-
-const filterSections: FilterSection[] = [
-    {
-        id: "category",
-        title: "หมวดหมู่",
-        options: ["ทรัพยากรบุคคล", "การเงิน", "บริหารโครงการ", "สำนักงาน", "IT Support"],
-    },
-    {
-        id: "department",
-        title: "แผนก",
-        options: ["HR", "Finance", "Management", "Admin", "IT"],
-    },
-    {
-        id: "type",
-        title: "ประเภทเอกสาร",
-        options: ["ราชการ", "เอกชน", "ทั่วไป"],
-    },
-];
+// Helper to parse placeholders
+const parsePlaceholders = (placeholdersJson: string): string[] => {
+    try {
+        return JSON.parse(placeholdersJson || '[]');
+    } catch {
+        return [];
+    }
+};
 
 // Filter Checkbox Component
 function FilterCheckbox({
@@ -119,6 +35,12 @@ function FilterCheckbox({
 }) {
     return (
         <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={onChange}
+                className="sr-only"
+            />
             <div
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                     checked
@@ -208,41 +130,100 @@ function FilterSectionComponent({
     );
 }
 
+// Get type icon and styling
+function getTypeInfo(type: TemplateType) {
+    switch (type) {
+        case 'official':
+            return { icon: Globe, label: 'Official', bgClass: 'bg-primary/10 text-primary' };
+        case 'private':
+            return { icon: Building2, label: 'Private', bgClass: 'bg-surface-alt text-text-muted border border-border-default' };
+        case 'community':
+            return { icon: Users, label: 'Community', bgClass: 'bg-surface-alt text-text-muted border border-border-default' };
+        default:
+            return { icon: Globe, label: type || 'Unknown', bgClass: 'bg-surface-alt text-text-muted border border-border-default' };
+    }
+}
+
+// Get tier styling
+function getTierClass(tier: Tier) {
+    switch (tier) {
+        case 'enterprise':
+            return 'bg-primary text-white';
+        case 'premium':
+            return 'bg-primary/80 text-white';
+        case 'basic':
+            return 'bg-surface-alt text-text-default border border-border-default';
+        case 'free':
+        default:
+            return 'bg-surface-alt text-text-muted border border-border-default';
+    }
+}
+
 // Template Card Component
-function TemplateCard({ template }: { template: FormTemplate }) {
+function TemplateCard({ template }: { template: Template }) {
+    const placeholders = parsePlaceholders(template.placeholders);
+    const typeInfo = getTypeInfo(template.type);
+    const TypeIcon = typeInfo.icon;
+
     return (
         <Link
             href={`/forms/${template.id}`}
             className="block bg-background border border-border-default rounded-lg p-5 hover:shadow-md hover:border-primary/30 transition-all"
         >
             <div className="space-y-3">
-                {/* Title */}
-                <h3 className="text-h4 text-foreground font-semibold leading-snug">
-                    {template.title}
-                </h3>
+                {/* Title with badges */}
+                <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-h4 text-foreground font-semibold leading-snug flex-1">
+                        {template.display_name || template.name || template.filename}
+                        {template.is_verified && (
+                            <CheckCircle className="inline-block ml-2 h-4 w-4 text-blue-500" />
+                        )}
+                        {template.is_ai_available && (
+                            <Sparkles className="inline-block ml-1 h-4 w-4 text-purple-500" />
+                        )}
+                    </h3>
+                </div>
+
+                {/* Description */}
+                {template.description && (
+                    <p className="text-body-sm text-text-muted line-clamp-2">
+                        {template.description}
+                    </p>
+                )}
 
                 {/* Tags/Badges */}
                 <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-caption font-medium bg-primary/10 text-primary">
-                        {template.category}
-                    </span>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-caption font-medium bg-surface-alt text-text-muted border border-border-default">
-                        {template.department}
-                    </span>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-caption font-medium bg-surface-alt text-text-muted border border-border-default">
-                        {template.type}
-                    </span>
+                    {template.category && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-caption font-medium bg-primary/10 text-primary">
+                            {template.category}
+                        </span>
+                    )}
+                    {template.type && (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-caption font-medium ${typeInfo.bgClass}`}>
+                            <TypeIcon className="w-3 h-3" />
+                            {typeInfo.label}
+                        </span>
+                    )}
+                    {template.tier && (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-caption font-medium ${getTierClass(template.tier)}`}>
+                            {template.tier.charAt(0).toUpperCase() + template.tier.slice(1)}
+                        </span>
+                    )}
                 </div>
 
-                {/* Meta info */}
-                <div className="flex items-center gap-2 text-body-sm text-text-muted">
-                    <MapPin className="w-4 h-4" />
-                    <span>{template.department}</span>
-                    <span>|</span>
-                    <span>{template.type}</span>
-                    <span>|</span>
-                    <span>{template.category}</span>
-                </div>
+                {/* Placeholders count */}
+                {placeholders.length > 0 && (
+                    <div className="text-body-sm text-text-muted">
+                        {placeholders.length} ช่องกรอกข้อมูล
+                    </div>
+                )}
+
+                {/* Author info */}
+                {template.author && (
+                    <div className="flex items-center gap-2 text-body-sm text-text-muted pt-2 border-t border-border-default">
+                        <span>โดย {template.author}</span>
+                    </div>
+                )}
             </div>
         </Link>
     );
@@ -250,12 +231,53 @@ function TemplateCard({ template }: { template: FormTemplate }) {
 
 // Main Component
 export default function FormTemplateList() {
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
         category: [],
-        department: [],
         type: [],
+        tier: [],
     });
+
+    // Load templates from API
+    useEffect(() => {
+        const loadTemplates = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await apiClient.getAllTemplates();
+                setTemplates(response.templates || []);
+            } catch (err) {
+                console.error('Failed to load templates:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load templates');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadTemplates();
+    }, []);
+
+    // Build dynamic filter sections from template data
+    const filterSections: FilterSection[] = [
+        {
+            id: "category",
+            title: "หมวดหมู่",
+            options: Array.from(new Set(templates.map(t => t.category).filter(Boolean))).sort(),
+        },
+        {
+            id: "type",
+            title: "ประเภท",
+            options: Array.from(new Set(templates.map(t => t.type).filter(Boolean))).sort(),
+        },
+        {
+            id: "tier",
+            title: "ระดับ",
+            options: Array.from(new Set(templates.map(t => t.tier).filter(Boolean))).sort(),
+        },
+    ].filter(section => section.options.length > 0);
 
     const handleFilterChange = (sectionId: string, option: string) => {
         setSelectedFilters((prev) => {
@@ -270,8 +292,8 @@ export default function FormTemplateList() {
     const clearFilters = () => {
         setSelectedFilters({
             category: [],
-            department: [],
             type: [],
+            tier: [],
         });
         setSearchQuery("");
     };
@@ -281,14 +303,16 @@ export default function FormTemplateList() {
         searchQuery.length > 0;
 
     // Filter templates
-    const filteredTemplates = formTemplates.filter((template) => {
+    const filteredTemplates = templates.filter((template) => {
         // Search filter
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             const matchesSearch =
-                template.title.toLowerCase().includes(query) ||
-                template.category.toLowerCase().includes(query) ||
-                template.tags.some((tag) => tag.toLowerCase().includes(query));
+                (template.display_name || '').toLowerCase().includes(query) ||
+                (template.name || '').toLowerCase().includes(query) ||
+                (template.description || '').toLowerCase().includes(query) ||
+                (template.category || '').toLowerCase().includes(query) ||
+                (template.author || '').toLowerCase().includes(query);
             if (!matchesSearch) return false;
         }
 
@@ -300,18 +324,18 @@ export default function FormTemplateList() {
             return false;
         }
 
-        // Department filter
-        if (
-            selectedFilters.department.length > 0 &&
-            !selectedFilters.department.includes(template.department)
-        ) {
-            return false;
-        }
-
         // Type filter
         if (
             selectedFilters.type.length > 0 &&
             !selectedFilters.type.includes(template.type)
+        ) {
+            return false;
+        }
+
+        // Tier filter
+        if (
+            selectedFilters.tier.length > 0 &&
+            !selectedFilters.tier.includes(template.tier)
         ) {
             return false;
         }
@@ -363,51 +387,92 @@ export default function FormTemplateList() {
 
                         {/* Filter Sections */}
                         <div className="bg-surface-alt rounded-lg p-4">
-                            {filterSections.map((section) => (
-                                <FilterSectionComponent
-                                    key={section.id}
-                                    section={section}
-                                    selectedFilters={selectedFilters[section.id] || []}
-                                    onFilterChange={(option) =>
-                                        handleFilterChange(section.id, option)
-                                    }
-                                />
-                            ))}
+                            {filterSections.length > 0 ? (
+                                filterSections.map((section) => (
+                                    <FilterSectionComponent
+                                        key={section.id}
+                                        section={section}
+                                        selectedFilters={selectedFilters[section.id] || []}
+                                        onFilterChange={(option) =>
+                                            handleFilterChange(section.id, option)
+                                        }
+                                    />
+                                ))
+                            ) : (
+                                <p className="text-body-sm text-text-muted text-center py-4">
+                                    {loading ? 'กำลังโหลด...' : 'ไม่มีตัวกรอง'}
+                                </p>
+                            )}
                         </div>
                     </aside>
 
                     {/* Right Content - Template List */}
                     <main className="flex-1">
                         {/* Results Header */}
-                        <div className="mb-6">
-                            <h1 className="text-h2 text-foreground mb-2">
-                                เทมเพลตเอกสาร
-                            </h1>
-                            <p className="text-body text-text-muted">
-                                พบ {filteredTemplates.length} รายการ
-                            </p>
+                        <div className="mb-6 flex items-start justify-between">
+                            <div>
+                                <h1 className="text-h2 text-foreground mb-2">
+                                    เทมเพลตเอกสาร
+                                </h1>
+                                <p className="text-body text-text-muted">
+                                    {loading ? 'กำลังโหลด...' : `พบ ${filteredTemplates.length} รายการ`}
+                                </p>
+                            </div>
+                            <Link
+                                href="/forms/new"
+                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-body-sm font-medium"
+                            >
+                                <Plus className="w-4 h-4" />
+                                เพิ่มเทมเพลต
+                            </Link>
                         </div>
 
+                        {/* Loading State */}
+                        {loading && (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                            </div>
+                        )}
+
+                        {/* Error State */}
+                        {error && !loading && (
+                            <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+                                <p className="text-body text-red-600 mb-4">
+                                    {error}
+                                </p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="text-primary hover:underline"
+                                >
+                                    ลองใหม่อีกครั้ง
+                                </button>
+                            </div>
+                        )}
+
                         {/* Template Cards */}
-                        <div className="space-y-4">
-                            {filteredTemplates.length > 0 ? (
-                                filteredTemplates.map((template) => (
-                                    <TemplateCard key={template.id} template={template} />
-                                ))
-                            ) : (
-                                <div className="text-center py-12 bg-surface-alt rounded-lg">
-                                    <p className="text-body text-text-muted">
-                                        ไม่พบเทมเพลตที่ตรงกับการค้นหา
-                                    </p>
-                                    <button
-                                        onClick={clearFilters}
-                                        className="mt-4 text-primary hover:underline"
-                                    >
-                                        ล้างตัวกรองทั้งหมด
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                        {!loading && !error && (
+                            <div className="space-y-4">
+                                {filteredTemplates.length > 0 ? (
+                                    filteredTemplates.map((template) => (
+                                        <TemplateCard key={template.id} template={template} />
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 bg-surface-alt rounded-lg">
+                                        <p className="text-body text-text-muted">
+                                            ไม่พบเทมเพลตที่ตรงกับการค้นหา
+                                        </p>
+                                        {hasActiveFilters && (
+                                            <button
+                                                onClick={clearFilters}
+                                                className="mt-4 text-primary hover:underline"
+                                            >
+                                                ล้างตัวกรองทั้งหมด
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </main>
                 </div>
             </div>

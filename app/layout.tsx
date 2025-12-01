@@ -8,6 +8,7 @@ import "./globals.css";
 import Navbar from "./components/Layout/Navbar";
 import Footer from "./components/Layout/Footer";
 import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
+import { AuthProvider } from "@/lib/auth/context";
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   variable: "--font-ibm-plex-sans-thai",
@@ -306,9 +307,11 @@ export default function RootLayout({
       <body
         className={`${ibmPlexSansThai.variable} ${ibmPlexSansThaiLooped.variable} ${prompt.variable} antialiased`}
       >
-        <Navbar />
-        {children}
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
