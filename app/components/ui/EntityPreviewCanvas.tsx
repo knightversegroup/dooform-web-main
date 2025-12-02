@@ -11,6 +11,7 @@ import {
   Position,
   BackgroundVariant,
   type Edge,
+  type Node as FlowNode,
   type NodeTypes,
   MarkerType,
 } from "@xyflow/react";
@@ -21,7 +22,7 @@ import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 import { apiClient } from "@/lib/api/client";
 
 // Entity icons
-const ENTITY_ICONS: Record<Entity, React.ComponentType<{ className?: string }>> = {
+const ENTITY_ICONS: Record<Entity, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   child: Baby,
   mother: User,
   father: Users,
@@ -296,11 +297,11 @@ export function EntityPreviewCanvas({
   }, []);
 
   // Create nodes and edges
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   useEffect(() => {
-    const newNodes: Parameters<typeof setNodes>[0] = [];
+    const newNodes: FlowNode[] = [];
     const newEdges: Edge[] = [];
 
     // Position entity nodes on the left with dynamic spacing
