@@ -150,6 +150,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
   }, []);
 
+  // Set full auth state (used after Google login)
+  const setAuthState = useCallback((userData: User, access: string, refresh: string) => {
+    setUser(userData);
+    setAccessToken(access);
+    setRefreshToken(refresh);
+  }, []);
+
   const value: AuthContextType = {
     user,
     accessToken,
@@ -160,6 +167,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     refreshAccessToken,
     updateUser,
+    setAuthState,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

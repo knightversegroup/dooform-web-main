@@ -16,7 +16,7 @@ function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectTo = searchParams.get("redirect") || "/";
-    const { login, updateUser, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { login, setAuthState, isAuthenticated, isLoading: authLoading } = useAuth();
 
     const [formData, setFormData] = useState({
         email: "",
@@ -88,19 +88,12 @@ function LoginContent() {
                 throw new Error(data.message || "Google authentication failed");
             }
 
-            // Store tokens in localStorage
-            const authData = {
-                user: data.data.user,
-                accessToken: data.data.access_token,
-                refreshToken: data.data.refresh_token,
-            };
-
-            localStorage.setItem("dooform_auth", JSON.stringify(authData));
-
-            // Update auth context
-            if (data.data.user) {
-                updateUser(data.data.user);
-            }
+            // Update auth context (this will also save to localStorage)
+            setAuthState(
+                data.data.user,
+                data.data.access_token,
+                data.data.refresh_token
+            );
 
             // Check if profile needs to be completed
             if (data.data.user && !data.data.user.profile_completed) {
