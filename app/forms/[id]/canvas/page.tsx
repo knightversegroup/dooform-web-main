@@ -13,6 +13,7 @@ import {
     Position,
     BackgroundVariant,
     type Edge,
+    type Node as FlowNode,
     type NodeTypes,
     MarkerType,
 } from "@xyflow/react";
@@ -574,8 +575,8 @@ export default function CanvasPage() {
     }, [htmlContent, fieldDefinitions, aliases, sections]);
 
     // Nodes and edges
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     useEffect(() => {
         const nodeWidth = 300;
@@ -583,7 +584,7 @@ export default function CanvasPage() {
         const startX = 100;
         const startY = 100;
 
-        const newNodes: Parameters<typeof setNodes>[0] = [];
+        const newNodes: FlowNode[] = [];
         const newEdges: Edge[] = [];
 
         newNodes.push({ id: "start", type: "startNode", position: { x: startX, y: startY + 100 }, data: {}, draggable: false });

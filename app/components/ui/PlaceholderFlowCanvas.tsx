@@ -10,6 +10,7 @@ import {
     useEdgesState,
     type NodeTypes,
     type Edge,
+    type Node as FlowNode,
     BackgroundVariant,
     MarkerType,
     Handle,
@@ -815,7 +816,7 @@ export function PlaceholderFlowCanvas({
         onFieldUpdate(fieldKey, { dataType: dataType as DataType });
     }, [onFieldUpdate]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     useEffect(() => {
@@ -824,7 +825,7 @@ export function PlaceholderFlowCanvas({
         const startX = 100;
         const startY = 100;
 
-        const newNodes: Parameters<typeof setNodes>[0] = [];
+        const newNodes: FlowNode[] = [];
         const newEdges: Edge[] = [];
 
         newNodes.push({ id: "start", type: "startNode", position: { x: startX, y: startY + 100 }, data: {}, draggable: false });

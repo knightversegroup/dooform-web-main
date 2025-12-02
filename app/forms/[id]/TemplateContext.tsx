@@ -34,12 +34,11 @@ interface TemplateContextType {
 const TemplateContext = createContext<TemplateContextType | null>(null);
 
 function parseAliases(template: Template): Record<string, string> {
-    if (!template.metadata) return {};
+    if (!template.aliases) return {};
     try {
-        const metadata = typeof template.metadata === "string"
-            ? JSON.parse(template.metadata)
-            : template.metadata;
-        return metadata.aliases || {};
+        return typeof template.aliases === "string"
+            ? JSON.parse(template.aliases)
+            : template.aliases;
     } catch {
         return {};
     }
@@ -134,7 +133,15 @@ export function TemplateProvider({
                     setFieldDefinitions(definitions || {});
                 } catch (e) {
                     console.warn("Failed to fetch field definitions:", e);
-                    setFieldDefinitions(foundTemplate.fieldDefinitions || {});
+                    // Fallback to template's field_definitions if API fails
+                    try {
+                        const fallback = foundTemplate.field_definitions
+                            ? JSON.parse(foundTemplate.field_definitions)
+                            : {};
+                        setFieldDefinitions(fallback);
+                    } catch {
+                        setFieldDefinitions({});
+                    }
                 }
 
                 // Fetch data types (non-critical)
