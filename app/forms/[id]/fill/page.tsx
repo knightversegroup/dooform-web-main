@@ -205,9 +205,10 @@ export default function FillFormPage({ params }: PageProps) {
                             }
                         } else {
                             if (isActive) {
-                                updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-300 text-yellow-800 px-0.5 rounded animate-pulse">${placeholder}</mark>`);
+                                updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded animate-pulse">___</mark>`);
                             } else {
-                                updatedHtml = updatedHtml.replace(regex, `<span class="text-gray-400">${placeholder}</span>`);
+                                // Hide placeholder when empty
+                                updatedHtml = updatedHtml.replace(regex, "");
                             }
                         }
                     });
@@ -226,9 +227,10 @@ export default function FillFormPage({ params }: PageProps) {
                         }
                     } else {
                         if (isActive) {
-                            updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-300 text-yellow-800 px-0.5 rounded animate-pulse">${placeholder}</mark>`);
+                            updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded animate-pulse">___</mark>`);
                         } else {
-                            updatedHtml = updatedHtml.replace(regex, `<span class="text-gray-400">${placeholder}</span>`);
+                            // Hide placeholder when empty
+                            updatedHtml = updatedHtml.replace(regex, "");
                         }
                     }
                 }
