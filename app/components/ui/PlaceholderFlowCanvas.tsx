@@ -30,6 +30,7 @@ import {
     Edit3,
     Loader2,
     Wand2,
+    FileText,
 } from "lucide-react";
 import type { FieldDefinition, DataType, Entity, ConfigurableDataType } from "@/lib/api/types";
 import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
@@ -527,6 +528,71 @@ function EndNode() {
             <Handle type="target" position={Position.Left} className="!w-4 !h-4 !-left-2 !bg-white !border-2 !border-green-600" />
             <Flag className="w-5 h-5" />
             <span className="text-sm font-medium">เสร็จสิ้น</span>
+            <Handle type="source" position={Position.Right} className="!w-4 !h-4 !-right-2 !bg-white !border-2 !border-green-600" />
+        </div>
+    );
+}
+
+// Preview Node Component
+function PreviewNode({ data }: { data: { html: string; loading: boolean } }) {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    useEffect(() => {
+        const iframe = iframeRef.current;
+        if (!iframe) return;
+
+        const resizeIframe = () => {
+            if (iframe.contentDocument?.body) {
+                const contentHeight = iframe.contentDocument.documentElement.scrollHeight;
+                iframe.style.height = `${contentHeight + 50}px`;
+            }
+        };
+
+        const handleLoad = () => {
+            resizeIframe();
+        };
+
+        iframe.addEventListener("load", handleLoad);
+        return () => iframe.removeEventListener("load", handleLoad);
+    }, []);
+
+    // A4 size: 210mm x 297mm ≈ 794px x 1123px at 96dpi
+    return (
+        <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden" style={{ width: 794 }}>
+            <Handle
+                type="target"
+                position={Position.Left}
+                className="!w-4 !h-4 !-left-2 !bg-gray-400 !border-2 !border-white"
+            />
+
+            {/* Header */}
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <p className="text-sm font-semibold text-gray-700">ตัวอย่างเอกสาร (A4)</p>
+            </div>
+
+            {/* Preview Content - A4 size */}
+            <div className="bg-gray-100 p-4 nodrag">
+                {data.loading ? (
+                    <div className="flex items-center justify-center" style={{ height: 1123 }}>
+                        <div className="text-center">
+                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin mx-auto mb-2" />
+                            <p className="text-xs text-gray-500">กำลังโหลด...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white shadow-md" style={{ width: 762, minHeight: 1123 }}>
+                        <iframe
+                            ref={iframeRef}
+                            srcDoc={data.html}
+                            className="w-full border-0 block"
+                            style={{ minHeight: 1123 }}
+                            title="Preview"
+                            sandbox="allow-same-origin"
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -535,9 +601,21 @@ const nodeTypes: NodeTypes = {
     sectionNode: SectionNode,
     startNode: StartNode,
     endNode: EndNode,
+    previewNode: PreviewNode,
+};
+
+// Entity colors for highlighting
+const ENTITY_HIGHLIGHT_COLORS: Record<Entity, { bg: string; accent: string }> = {
+    child: { bg: "#fce7f3", accent: "#db2777" },
+    mother: { bg: "#f3e8ff", accent: "#9333ea" },
+    father: { bg: "#dbeafe", accent: "#2563eb" },
+    informant: { bg: "#fef3c7", accent: "#d97706" },
+    registrar: { bg: "#dcfce7", accent: "#16a34a" },
+    general: { bg: "#f3f4f6", accent: "#4b5563" },
 };
 
 interface PlaceholderFlowCanvasProps {
+    templateId: string;
     fieldDefinitions: Record<string, FieldDefinition>;
     onFieldUpdate: (fieldKey: string, updates: Partial<FieldDefinition>) => void;
     aliases?: Record<string, string>;
@@ -546,6 +624,7 @@ interface PlaceholderFlowCanvasProps {
 }
 
 export function PlaceholderFlowCanvas({
+    templateId,
     fieldDefinitions,
     onFieldUpdate,
     aliases,
@@ -556,6 +635,8 @@ export function PlaceholderFlowCanvas({
     const [dataTypes, setDataTypes] = useState<ConfigurableDataType[]>([]);
     const [loadingDataTypes, setLoadingDataTypes] = useState(false);
     const [showRulesToolbar, setShowRulesToolbar] = useState(false);
+    const [htmlContent, setHtmlContent] = useState<string>("");
+    const [loadingHtml, setLoadingHtml] = useState(false);
 
     // Fetch data types from API
     useEffect(() => {
@@ -568,7 +649,6 @@ export function PlaceholderFlowCanvas({
                 setDataTypes(types);
             } catch (error) {
                 console.error("Failed to fetch data types:", error);
-                // Keep empty array to fallback to hardcoded types
             } finally {
                 setLoadingDataTypes(false);
             }
@@ -576,6 +656,61 @@ export function PlaceholderFlowCanvas({
 
         fetchDataTypes();
     }, [isOpen]);
+
+    // Fetch HTML preview
+    useEffect(() => {
+        if (!isOpen || !templateId) return;
+
+        const fetchHtml = async () => {
+            setLoadingHtml(true);
+            try {
+                const html = await apiClient.getHTMLPreview(templateId);
+                setHtmlContent(html || "");
+            } catch (error) {
+                console.error("Failed to fetch HTML preview:", error);
+                setHtmlContent("<p style='padding: 20px; color: #666;'>ไม่สามารถโหลดตัวอย่างได้</p>");
+            } finally {
+                setLoadingHtml(false);
+            }
+        };
+
+        fetchHtml();
+    }, [isOpen, templateId]);
+
+    // Create highlighted HTML
+    const highlightedHtml = useMemo(() => {
+        if (!htmlContent) return "";
+
+        let html = htmlContent;
+
+        // Highlight placeholders based on entity
+        Object.entries(fieldDefinitions).forEach(([key, def]) => {
+            const rawEntity = def.entity || "general";
+            const entity = ENTITY_HIGHLIGHT_COLORS[rawEntity as Entity] ? (rawEntity as Entity) : "general";
+            const color = ENTITY_HIGHLIGHT_COLORS[entity];
+
+            const regex = new RegExp(`(\\{\\{${key}\\}\\})`, "gi");
+            html = html.replace(
+                regex,
+                `<mark style="background-color: ${color.bg}; color: ${color.accent}; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">${aliases?.[key] || key}</mark>`
+            );
+        });
+
+        // Wrap HTML
+        const styles = `
+            <style>
+                html, body { margin: 0; padding: 0; background: white; font-family: 'IBM Plex Sans Thai', sans-serif; }
+                body { padding: 10mm; font-size: 12px; }
+                mark { white-space: nowrap; }
+            </style>
+        `;
+
+        if (html.includes("<!DOCTYPE") || html.includes("<html")) {
+            return html.replace(/<head([^>]*)>/i, `<head$1>${styles}`);
+        }
+
+        return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">${styles}</head><body>${html}</body></html>`;
+    }, [htmlContent, fieldDefinitions, aliases]);
 
     const allFields = useMemo<FieldInfo[]>(() => {
         return Object.entries(fieldDefinitions)
@@ -680,61 +815,6 @@ export function PlaceholderFlowCanvas({
         onFieldUpdate(fieldKey, { dataType: dataType as DataType });
     }, [onFieldUpdate]);
 
-    // Handle bulk entity updates from rules toolbar
-    const handleBulkEntityUpdate = useCallback((updates: Record<string, Entity>) => {
-        // Update field definitions
-        Object.entries(updates).forEach(([fieldKey, entity]) => {
-            onFieldUpdate(fieldKey, { entity });
-        });
-
-        // Update sections to reflect new entity assignments
-        setSections((prevSections) => {
-            // First, collect all field keys and their new entities
-            const fieldEntityMap: Record<string, Entity> = {};
-            Object.keys(fieldDefinitions).forEach((key) => {
-                fieldEntityMap[key] = updates[key] || fieldDefinitions[key]?.entity || "general";
-            });
-
-            // Create new sections based on entity grouping
-            const entityGroups: Record<Entity, string[]> = {
-                child: [], mother: [], father: [], informant: [], registrar: [], general: [],
-            };
-
-            // Get all assigned fields across sections
-            const allAssignedFields = prevSections.flatMap((s) => s.fields);
-
-            // Reassign fields to their new entity groups
-            allAssignedFields.forEach((fieldKey) => {
-                const rawEntity = fieldEntityMap[fieldKey] || "general";
-                const entity = entityGroups[rawEntity] ? rawEntity : "general";
-                entityGroups[entity].push(fieldKey);
-            });
-
-            // Update existing sections or create new ones
-            const newSections: Section[] = [];
-            let colorIndex = 0;
-
-            (Object.entries(entityGroups) as [Entity, string[]][]).forEach(([entity, fields]) => {
-                if (fields.length > 0) {
-                    // Check if section already exists
-                    const existingSection = prevSections.find((s) => s.name === ENTITY_LABELS[entity]);
-                    if (existingSection) {
-                        newSections.push({ ...existingSection, fields });
-                    } else {
-                        newSections.push({
-                            id: `section-${entity}`,
-                            name: ENTITY_LABELS[entity],
-                            fields,
-                            colorIndex: colorIndex++,
-                        });
-                    }
-                }
-            });
-
-            return newSections;
-        });
-    }, [onFieldUpdate, fieldDefinitions]);
-
     const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -769,6 +849,16 @@ export function PlaceholderFlowCanvas({
         const endX = startX + 200 + sections.length * (nodeWidth + nodeGap);
         newNodes.push({ id: "end", type: "endNode", position: { x: endX, y: startY + 100 }, data: {}, draggable: false });
 
+        // Add preview node on the right
+        const previewX = endX + 200;
+        newNodes.push({
+            id: "preview",
+            type: "previewNode",
+            position: { x: previewX, y: startY - 50 },
+            data: { html: highlightedHtml, loading: loadingHtml },
+            draggable: true,
+        });
+
         if (sections.length > 0) {
             newEdges.push({ id: "start-to-first", source: "start", target: sections[0].id, type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed, color: "#94A3B8" }, style: { stroke: "#94A3B8", strokeWidth: 2 } });
             for (let i = 0; i < sections.length - 1; i++) {
@@ -779,9 +869,12 @@ export function PlaceholderFlowCanvas({
             newEdges.push({ id: "start-to-end", source: "start", target: "end", type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed, color: "#94A3B8" }, style: { stroke: "#94A3B8", strokeWidth: 2 } });
         }
 
+        // Connect end to preview
+        newEdges.push({ id: "end-to-preview", source: "end", target: "preview", type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed, color: "#22c55e" }, style: { stroke: "#22c55e", strokeWidth: 2 } });
+
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [sections, allFields, addFieldToSection, removeFieldFromSection, renameSection, deleteSection, reorderField, moveFieldToSection, handleDataTypeChange, moveSection, setNodes, setEdges, dataTypes]);
+    }, [sections, allFields, addFieldToSection, removeFieldFromSection, renameSection, deleteSection, reorderField, moveFieldToSection, handleDataTypeChange, moveSection, setNodes, setEdges, dataTypes, highlightedHtml, loadingHtml]);
 
     const assignedFieldKeys = sections.flatMap((s) => s.fields);
     const unassignedCount = allFields.filter((f) => !assignedFieldKeys.includes(f.key)).length;
@@ -843,7 +936,21 @@ export function PlaceholderFlowCanvas({
             {/* Entity Rules Toolbar */}
             <EntityRulesToolbar
                 fieldDefinitions={fieldDefinitions}
-                onBulkEntityUpdate={handleBulkEntityUpdate}
+                sections={sections}
+                onMoveFieldToSection={(fieldKey: string, sectionId: string) => {
+                    // Remove field from all sections first, then add to target
+                    setSections((prev) => {
+                        const updated = prev.map((s) => ({
+                            ...s,
+                            fields: s.fields.filter((f) => f !== fieldKey),
+                        }));
+                        return updated.map((s) =>
+                            s.id === sectionId
+                                ? { ...s, fields: [...s.fields, fieldKey] }
+                                : s
+                        );
+                    });
+                }}
                 isOpen={showRulesToolbar}
                 onClose={() => setShowRulesToolbar(false)}
             />

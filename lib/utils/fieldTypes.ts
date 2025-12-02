@@ -430,6 +430,53 @@ export function groupFieldsByEntity(definitions: Record<string, FieldDefinition>
     return grouped;
 }
 
+// Group fields by saved group name (from canvas sections)
+export interface GroupedSection {
+    name: string;
+    fields: FieldDefinition[];
+    colorIndex: number;
+}
+
+export function groupFieldsBySavedGroup(definitions: Record<string, FieldDefinition>): GroupedSection[] {
+    const groupMap: Record<string, { fields: FieldDefinition[]; minOrder: number; colorIndex: number }> = {};
+
+    // Group fields by their saved group name
+    // Group format can be "name|colorIndex" or just "name"
+    Object.entries(definitions).forEach(([, def]) => {
+        const rawGroup = def.group && !def.group.startsWith("merged_hidden_") ? def.group : "ทั่วไป";
+        // Parse group format: "name|colorIndex" or just "name"
+        const [groupName, colorStr] = rawGroup.includes("|")
+            ? rawGroup.split("|")
+            : [rawGroup, "0"];
+        const colorIndex = parseInt(colorStr, 10) || 0;
+        const order = def.order ?? 9999;
+
+        if (!groupMap[groupName]) {
+            groupMap[groupName] = { fields: [], minOrder: order, colorIndex };
+        }
+
+        groupMap[groupName].fields.push(def);
+
+        if (order < groupMap[groupName].minOrder) {
+            groupMap[groupName].minOrder = order;
+        }
+    });
+
+    // Sort fields within each group by order
+    Object.values(groupMap).forEach((group) => {
+        group.fields.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+    });
+
+    // Sort groups by their minimum order and return as array
+    return Object.entries(groupMap)
+        .sort(([, a], [, b]) => a.minOrder - b.minOrder)
+        .map(([name, group]) => ({
+            name,
+            fields: group.fields,
+            colorIndex: group.colorIndex,
+        }));
+}
+
 // Group fields by their group property (for number patterns like $1, $1_D, etc.)
 export interface FieldGroup {
     name: string;

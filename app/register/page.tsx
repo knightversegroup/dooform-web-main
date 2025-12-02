@@ -65,13 +65,43 @@ function RegisterContent() {
             } else {
                 router.push(redirectTo);
             }
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Google register error:", err);
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "เกิดข้อผิดพลาดในการสมัครด้วย Google"
-            );
+
+            // Handle Firebase/Google auth errors with user-friendly messages
+            let errorMessage = "เกิดข้อผิดพลาดในการสมัครด้วย Google";
+
+            if (err && typeof err === 'object' && 'code' in err) {
+                const errorCode = (err as { code: string }).code;
+                switch (errorCode) {
+                    case 'auth/popup-closed-by-user':
+                        errorMessage = "การสมัครถูกยกเลิก";
+                        break;
+                    case 'auth/popup-blocked':
+                        errorMessage = "Popup ถูกบล็อก กรุณาอนุญาต popup สำหรับเว็บไซต์นี้";
+                        break;
+                    case 'auth/cancelled-popup-request':
+                        errorMessage = "การสมัครถูกยกเลิก";
+                        break;
+                    case 'auth/admin-restricted-operation':
+                    case 'auth/operation-not-allowed':
+                        errorMessage = "การสมัครด้วย Google ยังไม่พร้อมใช้งาน";
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage = "ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบอินเทอร์เน็ต";
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = "มีการร้องขอมากเกินไป กรุณาลองใหม่ภายหลัง";
+                        break;
+                    case 'auth/account-exists-with-different-credential':
+                        errorMessage = "อีเมลนี้ถูกใช้งานแล้วด้วยวิธีอื่น";
+                        break;
+                    default:
+                        errorMessage = "เกิดข้อผิดพลาดในการสมัคร กรุณาลองใหม่อีกครั้ง";
+                }
+            }
+
+            setError(errorMessage);
         } finally {
             setGoogleLoading(false);
         }

@@ -11,8 +11,15 @@ import {
     CheckCircle2,
     Wand2,
 } from "lucide-react";
-import type { Entity, FieldDefinition } from "@/lib/api/types";
-import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
+import type { FieldDefinition } from "@/lib/api/types";
+
+// Section type (matches canvas Section)
+interface Section {
+    id: string;
+    name: string;
+    fields: string[];
+    colorIndex: number;
+}
 
 // Rule match types
 type MatchType = "starts_with" | "ends_with" | "contains" | "regex" | "equals";
@@ -25,32 +32,24 @@ const MATCH_TYPE_LABELS: Record<MatchType, string> = {
     equals: "เท่ากับ",
 };
 
-interface EntityRule {
+interface SectionRule {
     id: string;
     matchType: MatchType;
     pattern: string;
-    targetEntity: Entity;
+    targetSectionId: string;
     isActive: boolean;
 }
 
-// Default rules based on common patterns
-const DEFAULT_RULES: EntityRule[] = [
-    { id: "rule-1", matchType: "starts_with", pattern: "m_", targetEntity: "mother", isActive: true },
-    { id: "rule-2", matchType: "starts_with", pattern: "f_", targetEntity: "father", isActive: true },
-    { id: "rule-3", matchType: "starts_with", pattern: "b_", targetEntity: "informant", isActive: true },
-    { id: "rule-4", matchType: "starts_with", pattern: "r_", targetEntity: "registrar", isActive: true },
-    { id: "rule-5", matchType: "starts_with", pattern: "c_", targetEntity: "child", isActive: true },
-];
-
 interface EntityRulesToolbarProps {
     fieldDefinitions: Record<string, FieldDefinition>;
-    onBulkEntityUpdate: (updates: Record<string, Entity>) => void;
+    sections: Section[];
+    onMoveFieldToSection: (fieldKey: string, sectionId: string) => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
 // Check if a field key matches a rule
-function matchesRule(fieldKey: string, rule: EntityRule): boolean {
+function matchesRule(fieldKey: string, rule: SectionRule): boolean {
     if (!rule.isActive || !rule.pattern) return false;
 
     const key = fieldKey.toLowerCase();
@@ -79,28 +78,39 @@ function matchesRule(fieldKey: string, rule: EntityRule): boolean {
 
 export function EntityRulesToolbar({
     fieldDefinitions,
-    onBulkEntityUpdate,
+    sections,
+    onMoveFieldToSection,
     isOpen,
     onClose,
 }: EntityRulesToolbarProps) {
-    const [rules, setRules] = useState<EntityRule[]>(DEFAULT_RULES);
-    const [previewResults, setPreviewResults] = useState<Record<string, Entity> | null>(null);
+    // Create default rules based on first section
+    const defaultSectionId = sections[0]?.id || "";
+
+    const [rules, setRules] = useState<SectionRule[]>([
+        { id: "rule-1", matchType: "starts_with", pattern: "", targetSectionId: defaultSectionId, isActive: true },
+    ]);
+    const [previewResults, setPreviewResults] = useState<Record<string, string> | null>(null);
     const [appliedCount, setAppliedCount] = useState<number | null>(null);
+
+    // Find which section a field currently belongs to
+    const getFieldCurrentSection = useCallback((fieldKey: string): Section | undefined => {
+        return sections.find(s => s.fields.includes(fieldKey));
+    }, [sections]);
 
     // Add new rule
     const addRule = useCallback(() => {
-        const newRule: EntityRule = {
+        const newRule: SectionRule = {
             id: `rule-${Date.now()}`,
             matchType: "starts_with",
             pattern: "",
-            targetEntity: "general",
+            targetSectionId: sections[0]?.id || "",
             isActive: true,
         };
         setRules((prev) => [...prev, newRule]);
-    }, []);
+    }, [sections]);
 
     // Update rule
-    const updateRule = useCallback((id: string, updates: Partial<EntityRule>) => {
+    const updateRule = useCallback((id: string, updates: Partial<SectionRule>) => {
         setRules((prev) =>
             prev.map((rule) => (rule.id === id ? { ...rule, ...updates } : rule))
         );
@@ -117,15 +127,17 @@ export function EntityRulesToolbar({
 
     // Preview what rules would change
     const previewRules = useCallback(() => {
-        const updates: Record<string, Entity> = {};
+        const updates: Record<string, string> = {};
 
-        Object.entries(fieldDefinitions).forEach(([fieldKey, def]) => {
+        Object.keys(fieldDefinitions).forEach((fieldKey) => {
+            const currentSection = getFieldCurrentSection(fieldKey);
+
             // Find first matching rule (priority by order)
             for (const rule of rules) {
                 if (matchesRule(fieldKey, rule)) {
-                    // Only mark if entity would change
-                    if (def.entity !== rule.targetEntity) {
-                        updates[fieldKey] = rule.targetEntity;
+                    // Only mark if section would change
+                    if (currentSection?.id !== rule.targetSectionId) {
+                        updates[fieldKey] = rule.targetSectionId;
                     }
                     break;
                 }
@@ -134,18 +146,20 @@ export function EntityRulesToolbar({
 
         setPreviewResults(updates);
         setAppliedCount(null);
-    }, [fieldDefinitions, rules]);
+    }, [fieldDefinitions, rules, getFieldCurrentSection]);
 
     // Apply rules
     const applyRules = useCallback(() => {
-        const updates: Record<string, Entity> = {};
+        const updates: Record<string, string> = {};
 
-        Object.entries(fieldDefinitions).forEach(([fieldKey, def]) => {
+        Object.keys(fieldDefinitions).forEach((fieldKey) => {
+            const currentSection = getFieldCurrentSection(fieldKey);
+
             // Find first matching rule (priority by order)
             for (const rule of rules) {
                 if (matchesRule(fieldKey, rule)) {
-                    if (def.entity !== rule.targetEntity) {
-                        updates[fieldKey] = rule.targetEntity;
+                    if (currentSection?.id !== rule.targetSectionId) {
+                        updates[fieldKey] = rule.targetSectionId;
                     }
                     break;
                 }
@@ -153,18 +167,44 @@ export function EntityRulesToolbar({
         });
 
         if (Object.keys(updates).length > 0) {
-            onBulkEntityUpdate(updates);
+            Object.entries(updates).forEach(([fieldKey, sectionId]) => {
+                onMoveFieldToSection(fieldKey, sectionId);
+            });
             setAppliedCount(Object.keys(updates).length);
             setPreviewResults(null);
         }
-    }, [fieldDefinitions, rules, onBulkEntityUpdate]);
+    }, [fieldDefinitions, rules, getFieldCurrentSection, onMoveFieldToSection]);
 
-    // Reset to default rules
-    const resetToDefaults = useCallback(() => {
-        setRules(DEFAULT_RULES);
+    // Reset rules
+    const resetRules = useCallback(() => {
+        setRules([
+            { id: "rule-1", matchType: "starts_with", pattern: "", targetSectionId: sections[0]?.id || "", isActive: true },
+        ]);
         setPreviewResults(null);
         setAppliedCount(null);
-    }, []);
+    }, [sections]);
+
+    // Get section name by id
+    const getSectionName = useCallback((sectionId: string) => {
+        return sections.find(s => s.id === sectionId)?.name || "ไม่พบ";
+    }, [sections]);
+
+    // Get section color by id
+    const getSectionColor = useCallback((sectionId: string) => {
+        const section = sections.find(s => s.id === sectionId);
+        if (!section) return { bg: "#F3F4F6", text: "#374151" };
+        const colors = [
+            { bg: "#FEF3C7", text: "#92400E" },
+            { bg: "#DBEAFE", text: "#1E40AF" },
+            { bg: "#FCE7F3", text: "#9D174D" },
+            { bg: "#D1FAE5", text: "#065F46" },
+            { bg: "#E0E7FF", text: "#3730A3" },
+            { bg: "#FEE2E2", text: "#991B1B" },
+            { bg: "#F3F4F6", text: "#374151" },
+            { bg: "#CFFAFE", text: "#155E75" },
+        ];
+        return colors[section.colorIndex % colors.length];
+    }, [sections]);
 
     if (!isOpen) return null;
 
@@ -181,7 +221,7 @@ export function EntityRulesToolbar({
                         </div>
                         <div>
                             <h2 className="font-semibold text-gray-900">กฎการจัดกลุ่มอัตโนมัติ</h2>
-                            <p className="text-xs text-gray-500">กำหนดกฎเพื่อจัดกลุ่มช่องกรอกข้อมูลตามรูปแบบชื่อ</p>
+                            <p className="text-xs text-gray-500">กำหนดกฎเพื่อจัดช่องกรอกข้อมูลเข้าส่วนต่างๆ ตามรูปแบบชื่อ</p>
                         </div>
                     </div>
                     <button
@@ -196,15 +236,22 @@ export function EntityRulesToolbar({
                 <div className="flex-1 overflow-y-auto p-6 space-y-3">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm text-gray-600">
-                            {activeRulesCount} กฎที่ใช้งาน • {Object.keys(fieldDefinitions).length} ช่องทั้งหมด
+                            {activeRulesCount} กฎที่ใช้งาน • {Object.keys(fieldDefinitions).length} ช่องทั้งหมด • {sections.length} ส่วน
                         </span>
                         <button
-                            onClick={resetToDefaults}
+                            onClick={resetRules}
                             className="text-xs text-gray-500 hover:text-gray-700"
                         >
-                            รีเซ็ตเป็นค่าเริ่มต้น
+                            รีเซ็ต
                         </button>
                     </div>
+
+                    {sections.length === 0 && (
+                        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 text-amber-700 text-sm">
+                            <AlertCircle className="w-4 h-4 inline mr-2" />
+                            ยังไม่มีส่วนที่สร้างไว้ กรุณาสร้างส่วนก่อนใช้งานกฎ
+                        </div>
+                    )}
 
                     {rules.map((rule, index) => (
                         <div
@@ -256,19 +303,23 @@ export function EntityRulesToolbar({
                             {/* Then label */}
                             <span className="text-sm text-gray-500 font-medium">→</span>
 
-                            {/* Target entity dropdown */}
+                            {/* Target section dropdown */}
                             <div className="relative">
                                 <select
-                                    value={rule.targetEntity}
-                                    onChange={(e) => updateRule(rule.id, { targetEntity: e.target.value as Entity })}
-                                    className="appearance-none bg-purple-50 text-purple-700 text-sm px-3 py-1.5 pr-8 rounded-lg border-0 focus:ring-2 focus:ring-purple-500 font-medium"
-                                    disabled={!rule.isActive}
+                                    value={rule.targetSectionId}
+                                    onChange={(e) => updateRule(rule.id, { targetSectionId: e.target.value })}
+                                    className="appearance-none text-sm px-3 py-1.5 pr-8 rounded-lg border-0 focus:ring-2 focus:ring-purple-500 font-medium"
+                                    style={{
+                                        backgroundColor: getSectionColor(rule.targetSectionId).bg,
+                                        color: getSectionColor(rule.targetSectionId).text,
+                                    }}
+                                    disabled={!rule.isActive || sections.length === 0}
                                 >
-                                    {Object.entries(ENTITY_LABELS).map(([value, label]) => (
-                                        <option key={value} value={value}>{label}</option>
+                                    {sections.map((section) => (
+                                        <option key={section.id} value={section.id}>{section.name}</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400 pointer-events-none" />
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: getSectionColor(rule.targetSectionId).text }} />
                             </div>
 
                             {/* Delete button */}
@@ -296,18 +347,21 @@ export function EntityRulesToolbar({
                             <div className="flex items-center gap-2 mb-3">
                                 <AlertCircle className="w-4 h-4 text-blue-600" />
                                 <span className="text-sm font-medium text-blue-900">
-                                    ตัวอย่างผลลัพธ์: {Object.keys(previewResults).length} ช่องจะถูกเปลี่ยนกลุ่ม
+                                    ตัวอย่างผลลัพธ์: {Object.keys(previewResults).length} ช่องจะถูกย้าย
                                 </span>
                             </div>
                             <div className="max-h-40 overflow-y-auto space-y-1">
-                                {Object.entries(previewResults).map(([fieldKey, newEntity]) => (
-                                    <div key={fieldKey} className="flex items-center justify-between text-xs">
-                                        <span className="text-gray-700 font-mono">{fieldKey}</span>
-                                        <span className="text-blue-600">
-                                            {fieldDefinitions[fieldKey]?.entity && ENTITY_LABELS[fieldDefinitions[fieldKey].entity]} → {ENTITY_LABELS[newEntity]}
-                                        </span>
-                                    </div>
-                                ))}
+                                {Object.entries(previewResults).map(([fieldKey, newSectionId]) => {
+                                    const currentSection = getFieldCurrentSection(fieldKey);
+                                    return (
+                                        <div key={fieldKey} className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-700 font-mono">{fieldKey}</span>
+                                            <span className="text-blue-600">
+                                                {currentSection?.name || "ไม่มีส่วน"} → {getSectionName(newSectionId)}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -316,7 +370,7 @@ export function EntityRulesToolbar({
                         <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="flex items-center gap-2 text-gray-600">
                                 <CheckCircle2 className="w-4 h-4" />
-                                <span className="text-sm">ไม่มีช่องที่ต้องเปลี่ยนกลุ่ม (อาจจัดกลุ่มถูกต้องแล้ว)</span>
+                                <span className="text-sm">ไม่มีช่องที่ต้องย้าย (อาจจัดกลุ่มถูกต้องแล้ว หรือไม่มีช่องที่ตรงกับกฎ)</span>
                             </div>
                         </div>
                     )}
@@ -326,7 +380,7 @@ export function EntityRulesToolbar({
                             <div className="flex items-center gap-2 text-green-700">
                                 <CheckCircle2 className="w-4 h-4" />
                                 <span className="text-sm font-medium">
-                                    อัพเดท {appliedCount} ช่องเรียบร้อยแล้ว!
+                                    ย้าย {appliedCount} ช่องเรียบร้อยแล้ว!
                                 </span>
                             </div>
                         </div>
@@ -348,7 +402,7 @@ export function EntityRulesToolbar({
                         </button>
                         <button
                             onClick={applyRules}
-                            disabled={activeRulesCount === 0}
+                            disabled={activeRulesCount === 0 || sections.length === 0}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Play className="w-4 h-4" />

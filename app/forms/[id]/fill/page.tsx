@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
     ArrowLeft,
@@ -12,15 +12,15 @@ import {
     Scan,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, FieldDefinition, Entity } from "@/lib/api/types";
+import { Template, FieldDefinition } from "@/lib/api/types";
 import { Button } from "@/app/components/ui/Button";
 import { SmartInput } from "@/app/components/ui/SmartInput";
 import { OCRScanner } from "@/app/components/ui/OCRScanner";
 import { DocumentPreview } from "@/app/components/ui/DocumentPreview";
 import { useAuth } from "@/lib/auth/context";
 import {
-    groupFieldsByEntity,
-    ENTITY_LABELS,
+    groupFieldsBySavedGroup,
+    type GroupedSection,
     splitMergedValue,
 } from "@/lib/utils/fieldTypes";
 import { AddressSelection } from "@/lib/api/addressService";
@@ -68,7 +68,7 @@ export default function FillFormPage({ params }: PageProps) {
 
     // Field definitions
     const [fieldDefinitions, setFieldDefinitions] = useState<Record<string, FieldDefinition>>({});
-    const [groupedFields, setGroupedFields] = useState<Record<Entity, FieldDefinition[]> | null>(null);
+    const [groupedSections, setGroupedSections] = useState<GroupedSection[]>([]);
 
     // HTML Preview state
     const [htmlContent, setHtmlContent] = useState("");
@@ -132,15 +132,15 @@ export default function FillFormPage({ params }: PageProps) {
                         visibleDefinitions[key] = def;
                     });
 
-                    // Group fields by entity, preserving original placeholder order
-                    const grouped = groupFieldsByEntity(visibleDefinitions, placeholders);
-                    setGroupedFields(grouped);
+                    // Group fields by saved group name (from canvas sections)
+                    const sections = groupFieldsBySavedGroup(visibleDefinitions);
+                    setGroupedSections(sections);
                 } catch (err) {
                     console.error("Failed to load field definitions:", err);
                     // If backend doesn't have field definitions, the form will still work
                     // but without smart input types
                     setFieldDefinitions({});
-                    setGroupedFields(null);
+                    setGroupedSections([]);
                 }
 
                 // Load HTML preview if available
@@ -148,7 +148,9 @@ export default function FillFormPage({ params }: PageProps) {
                     try {
                         const html = await apiClient.getHTMLPreview(templateId);
                         setHtmlContent(html);
-                        setPreviewHtml(html);
+                        // Remove all {{...}} placeholders initially (show clean document)
+                        const initialPreview = html.replace(/\{\{([^}]+)\}\}/g, '');
+                        setPreviewHtml(initialPreview);
                         setHasPreview(true);
                     } catch (err) {
                         console.error("Failed to load HTML preview:", err);
@@ -170,6 +172,31 @@ export default function FillFormPage({ params }: PageProps) {
         }
     }, [templateId]);
 
+    // Section color palette for preview highlighting
+    const SECTION_COLORS = [
+        { bg: "#FEF3C7", text: "#92400E" },  // 0: yellow
+        { bg: "#DBEAFE", text: "#1E40AF" },  // 1: blue
+        { bg: "#FCE7F3", text: "#9D174D" },  // 2: pink
+        { bg: "#D1FAE5", text: "#065F46" },  // 3: green
+        { bg: "#E0E7FF", text: "#3730A3" },  // 4: purple
+        { bg: "#FEE2E2", text: "#991B1B" },  // 5: red
+        { bg: "#F3F4F6", text: "#374151" },  // 6: gray
+        { bg: "#CFFAFE", text: "#155E75" },  // 7: cyan
+    ];
+
+    // Build field to color map from sections
+    const fieldColorMap = useMemo(() => {
+        const map: Record<string, { bg: string; text: string }> = {};
+        groupedSections.forEach((section) => {
+            const color = SECTION_COLORS[section.colorIndex % SECTION_COLORS.length];
+            section.fields.forEach((def) => {
+                const key = def.placeholder.replace(/\{\{|\}\}/g, '');
+                map[key] = color;
+            });
+        });
+        return map;
+    }, [groupedSections]);
+
     // Update preview when form values change or active field changes
     useEffect(() => {
         if (htmlContent && hasPreview) {
@@ -180,6 +207,7 @@ export default function FillFormPage({ params }: PageProps) {
                 const definition = fieldDefinitions[key];
                 const value = formData[key] || "";
                 const isActive = activeField === key;
+                const sectionColor = fieldColorMap[key] || { bg: "#F3F4F6", text: "#374151" };
 
                 if (definition?.isMerged && definition.mergedFields) {
                     // Split merged value into individual field values
@@ -193,19 +221,19 @@ export default function FillFormPage({ params }: PageProps) {
                     definition.mergedFields.forEach((fieldKey) => {
                         const fieldValue = splitValues[fieldKey] || "";
                         const placeholder = `{{${fieldKey}}}`;
-                        // Escape special regex characters including $ and {}
                         const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                         const regex = new RegExp(escapedPlaceholder, "g");
+                        const fieldColor = fieldColorMap[fieldKey] || sectionColor;
 
                         if (fieldValue) {
                             if (isActive) {
-                                updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-300 px-0.5 rounded transition-colors">${fieldValue}</mark>`);
+                                updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${fieldColor.bg}; color: ${fieldColor.text}; padding: 2px 6px; border-radius: 4px; font-weight: 500;">${fieldValue}</mark>`);
                             } else {
                                 updatedHtml = updatedHtml.replace(regex, fieldValue);
                             }
                         } else {
                             if (isActive) {
-                                updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded animate-pulse">___</mark>`);
+                                updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${fieldColor.bg}; color: ${fieldColor.text}; padding: 2px 6px; border-radius: 4px; opacity: 0.7;">___</mark>`);
                             } else {
                                 // Hide placeholder when empty
                                 updatedHtml = updatedHtml.replace(regex, "");
@@ -215,19 +243,18 @@ export default function FillFormPage({ params }: PageProps) {
                 } else {
                     // Regular field - replace single placeholder
                     const placeholder = `{{${key}}}`;
-                    // Escape special regex characters including $ and {}
                     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                     const regex = new RegExp(escapedPlaceholder, "g");
 
                     if (value) {
                         if (isActive) {
-                            updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-300 px-0.5 rounded transition-colors">${value}</mark>`);
+                            updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${sectionColor.bg}; color: ${sectionColor.text}; padding: 2px 6px; border-radius: 4px; font-weight: 500;">${value}</mark>`);
                         } else {
                             updatedHtml = updatedHtml.replace(regex, value);
                         }
                     } else {
                         if (isActive) {
-                            updatedHtml = updatedHtml.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded animate-pulse">___</mark>`);
+                            updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${sectionColor.bg}; color: ${sectionColor.text}; padding: 2px 6px; border-radius: 4px; opacity: 0.7;">___</mark>`);
                         } else {
                             // Hide placeholder when empty
                             updatedHtml = updatedHtml.replace(regex, "");
@@ -235,9 +262,13 @@ export default function FillFormPage({ params }: PageProps) {
                     }
                 }
             });
+
+            // Also remove any remaining {{...}} placeholders that weren't in formData
+            updatedHtml = updatedHtml.replace(/\{\{([^}]+)\}\}/g, '');
+
             setPreviewHtml(updatedHtml);
         }
-    }, [formData, htmlContent, hasPreview, activeField, fieldDefinitions]);
+    }, [formData, htmlContent, hasPreview, activeField, fieldDefinitions, fieldColorMap]);
 
     const handleInputChange = (key: string, value: string) => {
         setFormData((prev) => ({
@@ -571,45 +602,40 @@ export default function FillFormPage({ params }: PageProps) {
                         {/* Form */}
                         {!success && (
                             <form onSubmit={handleSubmit}>
-                                {groupedFields && Object.keys(fieldDefinitions).length > 0 ? (
+                                {groupedSections.length > 0 ? (
                                     <div className="space-y-4">
-                                        {/* Render fields grouped by entity */}
-                                        {(Object.keys(groupedFields) as Entity[]).map((entity) => {
-                                            const fields = groupedFields[entity];
-                                            if (fields.length === 0) return null;
+                                        {/* Render fields grouped by saved sections */}
+                                        {groupedSections.map((section) => (
+                                            <div
+                                                key={section.name}
+                                                className="bg-background border border-border-default rounded-lg p-4"
+                                            >
+                                                <h2 className="text-body font-semibold text-foreground mb-4 flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-primary" />
+                                                    {section.name} ({section.fields.length})
+                                                </h2>
 
-                                            return (
-                                                <div
-                                                    key={entity}
-                                                    className="bg-background border border-border-default rounded-lg p-4"
-                                                >
-                                                    <h2 className="text-body font-semibold text-foreground mb-4 flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-primary" />
-                                                        {ENTITY_LABELS[entity]} ({fields.length})
-                                                    </h2>
-
-                                                    <div className="space-y-3">
-                                                        {fields.map((definition) => {
-                                                            const key = definition.placeholder.replace(/\{\{|\}\}/g, '');
-                                                            return (
-                                                                <SmartInput
-                                                                    key={key}
-                                                                    definition={definition}
-                                                                    value={formData[key] || ""}
-                                                                    onChange={(value) => handleInputChange(key, value)}
-                                                                    onFocus={() => setActiveField(key)}
-                                                                    onBlur={() => setActiveField(null)}
-                                                                    onAddressSelect={(address) => handleAddressSelect(key, address)}
-                                                                    alias={aliases[definition.placeholder]}
-                                                                    disabled={processing}
-                                                                    compact={hasPreview}
-                                                                />
-                                                            );
-                                                        })}
-                                                    </div>
+                                                <div className="space-y-3">
+                                                    {section.fields.map((definition) => {
+                                                        const key = definition.placeholder.replace(/\{\{|\}\}/g, '');
+                                                        return (
+                                                            <SmartInput
+                                                                key={key}
+                                                                definition={definition}
+                                                                value={formData[key] || ""}
+                                                                onChange={(value) => handleInputChange(key, value)}
+                                                                onFocus={() => setActiveField(key)}
+                                                                onBlur={() => setActiveField(null)}
+                                                                onAddressSelect={(address) => handleAddressSelect(key, address)}
+                                                                alias={aliases[definition.placeholder]}
+                                                                disabled={processing}
+                                                                compact={hasPreview}
+                                                            />
+                                                        );
+                                                    })}
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                        ))}
 
                                         {/* Submit Button */}
                                         <div className="bg-background border border-border-default rounded-lg p-4">
