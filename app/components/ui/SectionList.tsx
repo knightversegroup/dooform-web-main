@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
-import type { FieldDefinition } from "@/lib/api/types";
+import type { FieldDefinition, Entity } from "@/lib/api/types";
+import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 
 // Dynamic section colors - must match canvas SECTION_COLORS
 const SECTION_COLOR_PALETTE = [
@@ -16,55 +17,110 @@ const SECTION_COLOR_PALETTE = [
     { bg: "bg-cyan-50", border: "border-cyan-300", text: "text-cyan-800" },         // 7: ฟ้า
 ];
 
+// Entity to color index mapping (for entity-based fallback)
+const ENTITY_COLOR_MAP: Record<Entity, number> = {
+    child: 2,      // ชมพู
+    mother: 4,     // ม่วง
+    father: 1,     // น้ำเงิน
+    informant: 0,  // เหลือง
+    registrar: 3,  // เขียว
+    general: 6,    // เทา
+};
+
 interface SectionListProps {
     fieldDefinitions: Record<string, FieldDefinition>;
     aliases?: Record<string, string>;
 }
 
 export function SectionList({ fieldDefinitions, aliases }: SectionListProps) {
-    // Group fields by saved group name, with order and color preserved
+    // Group fields by saved group name OR by entity if no group is saved
     const sections = useMemo(() => {
-        const groupMap: Record<string, { fields: { key: string; label: string; order: number }[]; minOrder: number; colorIndex: number }> = {};
+        // First, check if any field has a saved group (not starting with merged_hidden_)
+        const fieldsWithGroups = Object.entries(fieldDefinitions)
+            .filter(([, def]) => def.group && !def.group.startsWith("merged_hidden_"));
 
-        Object.entries(fieldDefinitions)
-            .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
-            .forEach(([key, def]) => {
-                // Parse group format: "name|colorIndex" or just "name"
-                const rawGroup = def.group || "ทั่วไป";
-                const [groupName, colorStr] = rawGroup.includes("|")
-                    ? rawGroup.split("|")
-                    : [rawGroup, "0"];
-                const colorIndex = parseInt(colorStr, 10) || 0;
-                const order = def.order ?? 9999;
+        const hasSavedGroups = fieldsWithGroups.length > 0;
 
-                if (!groupMap[groupName]) {
-                    groupMap[groupName] = { fields: [], minOrder: order, colorIndex };
-                }
+        if (hasSavedGroups) {
+            // Use saved groups
+            const groupMap: Record<string, { fields: { key: string; label: string; order: number }[]; minOrder: number; colorIndex: number }> = {};
 
-                groupMap[groupName].fields.push({
-                    key,
-                    label: aliases?.[key] || key,
-                    order,
+            Object.entries(fieldDefinitions)
+                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
+                .forEach(([key, def]) => {
+                    // Parse group format: "name|colorIndex" or just "name"
+                    const rawGroup = def.group || "ทั่วไป";
+                    const [groupName, colorStr] = rawGroup.includes("|")
+                        ? rawGroup.split("|")
+                        : [rawGroup, "0"];
+                    const colorIndex = parseInt(colorStr, 10) || 0;
+                    const order = def.order ?? 9999;
+
+                    if (!groupMap[groupName]) {
+                        groupMap[groupName] = { fields: [], minOrder: order, colorIndex };
+                    }
+
+                    groupMap[groupName].fields.push({
+                        key,
+                        label: aliases?.[key] || key,
+                        order,
+                    });
+
+                    if (order < groupMap[groupName].minOrder) {
+                        groupMap[groupName].minOrder = order;
+                    }
                 });
 
-                if (order < groupMap[groupName].minOrder) {
-                    groupMap[groupName].minOrder = order;
-                }
+            // Sort fields within each group by order
+            Object.values(groupMap).forEach((group) => {
+                group.fields.sort((a, b) => a.order - b.order);
             });
 
-        // Sort fields within each group by order
-        Object.values(groupMap).forEach((group) => {
-            group.fields.sort((a, b) => a.order - b.order);
-        });
+            // Sort groups by their minimum order
+            return Object.entries(groupMap)
+                .sort(([, a], [, b]) => a.minOrder - b.minOrder)
+                .map(([name, group]) => ({
+                    name,
+                    fields: group.fields,
+                    colorIndex: group.colorIndex % SECTION_COLOR_PALETTE.length,
+                }));
+        } else {
+            // Fall back to entity-based grouping
+            const entityGroups: Record<Entity, { key: string; label: string; order: number }[]> = {
+                child: [],
+                mother: [],
+                father: [],
+                informant: [],
+                registrar: [],
+                general: [],
+            };
 
-        // Sort groups by their minimum order
-        return Object.entries(groupMap)
-            .sort(([, a], [, b]) => a.minOrder - b.minOrder)
-            .map(([name, group]) => ({
-                name,
-                fields: group.fields,
-                colorIndex: group.colorIndex % SECTION_COLOR_PALETTE.length,
-            }));
+            Object.entries(fieldDefinitions)
+                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
+                .forEach(([key, def]) => {
+                    const entity = def.entity && entityGroups[def.entity] ? def.entity : "general";
+                    const order = def.order ?? 9999;
+                    entityGroups[entity].push({
+                        key,
+                        label: aliases?.[key] || key,
+                        order,
+                    });
+                });
+
+            // Sort fields within each entity group by order
+            Object.values(entityGroups).forEach((fields) => {
+                fields.sort((a, b) => a.order - b.order);
+            });
+
+            // Convert to sections, filtering out empty groups
+            return (Object.entries(entityGroups) as [Entity, { key: string; label: string; order: number }[]][])
+                .filter(([, fields]) => fields.length > 0)
+                .map(([entity, fields]) => ({
+                    name: ENTITY_LABELS[entity],
+                    fields,
+                    colorIndex: ENTITY_COLOR_MAP[entity] % SECTION_COLOR_PALETTE.length,
+                }));
+        }
     }, [fieldDefinitions, aliases]);
 
     const totalFields = sections.reduce((sum, section) => sum + section.fields.length, 0);
