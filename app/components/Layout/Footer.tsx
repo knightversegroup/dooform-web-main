@@ -3,37 +3,18 @@ import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 
 const footerLinks = {
-    developers: {
-        title: "สำหรับพัฒนา",
-        links: [
-            { label: "Knowledge Base", href: "/form" },
-            { label: "Components", href: "/components" },
-        ],
-    },
     application: {
         title: "เกี่ยวกับแอปพลิเคชั่น",
         links: [
             { label: "รายการเอกสาร", href: "/documents" },
-            { label: "คำแนะนำในการใช้งาน", href: "/guide" },
-            { label: "เอกสารประกอบการใช้งาน", href: "/documentation" },
-            { label: "รายงานวิเคราะห์คุณภาพ", href: "/quality-report" },
-            { label: "ทีมพัฒนา", href: "/team" },
-            { label: "เกี่ยวกับเว็บไซต์", href: "/about" },
-        ],
-    },
-    business: {
-        title: "สำหรับหน่วยงานธุรกิจ",
-        links: [
-            { label: "แพลนสำหรับหน่วยงาน", href: "/plans" },
-            { label: "ค่าบริการ", href: "/pricing" },
-            { label: "ติดต่อสอบถาม", href: "/contact" },
+            { label: "แบบฟอร์มทั้งหมด", href: "/forms" },
         ],
     },
     legal: {
         title: "ข้อบังคับทางกฎหมาย",
         links: [
-            { label: "ข้อตกลงในการใช้งาน", href: "/terms" },
-            { label: "นโยบายการจัดเก็บข้อมูล", href: "/privacy" },
+            { label: "นโยบายคุกกี้", href: "/documents/Terms-of-Use/cookie-policy" },
+            { label: "นโยบายความเป็นส่วนตัว", href: "/documents/Terms-of-Use/privacy-notice" },
         ],
     },
 };

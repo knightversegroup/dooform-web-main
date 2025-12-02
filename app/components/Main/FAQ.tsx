@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 
 interface FAQItem {
@@ -101,15 +100,6 @@ export default function FAQ({ background = "default" }: FAQProps) {
                         <h2 className="text-h2 text-foreground mb-4">
                             คำถามที่พบบ่อย
                         </h2>
-                        <Link
-                            href="/help"
-                            className="inline-flex items-center text-primary hover:underline text-body-sm font-medium group"
-                        >
-                            ดูหน้าช่วยเหลือของเรา
-                            <span className="ml-1 transition-transform group-hover:translate-x-1">
-                                →
-                            </span>
-                        </Link>
                     </div>
 
                     {/* Right side - Accordions */}

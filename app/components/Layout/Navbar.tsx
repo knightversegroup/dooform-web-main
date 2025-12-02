@@ -73,24 +73,6 @@ type NavItem = NavItemWithDropdown | NavItemWithoutDropdown;
 
 const navigationItems: NavItem[] = [
   {
-    label: "โซลูชั่น",
-    hasDropdown: true,
-    items: [
-      { label: "แปลงเอกสาร", href: "/solutions/convert" },
-      { label: "จัดการฟอร์ม", href: "/solutions/manage" },
-      { label: "ระบบอัตโนมัติ", href: "/solutions/automation" },
-    ],
-  },
-  {
-    label: "บริการแปลพร้อมรับรอง",
-    hasDropdown: true,
-    items: [
-      { label: "แปลเอกสารราชการ", href: "/translation/government" },
-      { label: "แปลเอกสารธุรกิจ", href: "/translation/business" },
-      { label: "รับรองเอกสาร", href: "/translation/certification" },
-    ],
-  },
-  {
     label: "แบบฟอร์ม",
     href: "/forms",
     hasDropdown: false,
