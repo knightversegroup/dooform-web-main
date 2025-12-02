@@ -26,6 +26,7 @@ import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
 import { SectionList } from "@/app/components/ui/SectionList";
 import { useAuth } from "@/lib/auth/context";
+import { useTemplate } from "../TemplateContext";
 
 // Helper to parse aliases
 const parseAliases = (aliasesJson: string): Record<string, string> => {
@@ -53,6 +54,7 @@ export default function EditFormPage({ params }: PageProps) {
     const { id: templateId } = use(params);
     const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { refetchTemplate } = useTemplate();
 
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
@@ -262,6 +264,9 @@ export default function EditFormPage({ params }: PageProps) {
             const definitions = await apiClient.regenerateFieldDefinitions(templateId);
             setFieldDefinitions(definitions);
             setFieldDefSuccess(true);
+
+            // Sync TemplateContext so canvas page gets updated sections
+            await refetchTemplate();
 
             // Clear success message after 3 seconds
             setTimeout(() => setFieldDefSuccess(false), 3000);

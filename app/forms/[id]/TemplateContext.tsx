@@ -78,6 +78,8 @@ export function TemplateProvider({
                 try {
                     const definitions = await apiClient.getFieldDefinitions(templateId);
                     setFieldDefinitions(definitions || {});
+                    // Reset sections so they get re-initialized from new field definitions
+                    setSectionsInitialized(false);
                 } catch (e) {
                     console.warn("Failed to fetch field definitions:", e);
                 }
