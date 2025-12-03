@@ -697,6 +697,13 @@ export function PlaceholderFlowCanvas({
             );
         });
 
+        // Highlight any remaining placeholders that weren't in fieldDefinitions (fallback)
+        const fallbackColor = ENTITY_HIGHLIGHT_COLORS.general;
+        html = html.replace(
+            /\{\{([^}]+)\}\}/g,
+            `<mark style="background-color: ${fallbackColor.bg}; color: ${fallbackColor.accent}; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">$1</mark>`
+        );
+
         // Wrap HTML
         const styles = `
             <style>
