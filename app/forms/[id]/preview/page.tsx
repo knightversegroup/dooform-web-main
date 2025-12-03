@@ -8,8 +8,10 @@ import { DocumentPreview } from "@/app/components/ui/DocumentPreview";
 
 // Helper to remove curly braces from placeholders in preview
 const cleanPlaceholders = (html: string): string => {
+    // First, decode HTML entities for curly braces
+    let result = html.replace(/&#123;/g, '{').replace(/&#125;/g, '}');
     // Replace {{placeholder}} with just placeholder
-    return html.replace(/\{\{([^}]+)\}\}/g, '$1');
+    return result.replace(/\{\{([^}]+)\}\}/g, '$1');
 };
 
 interface PageProps {

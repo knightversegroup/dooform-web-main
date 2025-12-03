@@ -684,13 +684,18 @@ export function PlaceholderFlowCanvas({
 
         let html = htmlContent;
 
+        // First, decode HTML entities for curly braces
+        html = html.replace(/&#123;/g, '{').replace(/&#125;/g, '}');
+
         // Highlight placeholders based on entity
         Object.entries(fieldDefinitions).forEach(([key, def]) => {
             const rawEntity = def.entity || "general";
             const entity = ENTITY_HIGHLIGHT_COLORS[rawEntity as Entity] ? (rawEntity as Entity) : "general";
             const color = ENTITY_HIGHLIGHT_COLORS[entity];
 
-            const regex = new RegExp(`(\\{\\{${key}\\}\\})`, "gi");
+            // Escape special regex characters in key
+            const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, "gi");
             html = html.replace(
                 regex,
                 `<mark style="background-color: ${color.bg}; color: ${color.accent}; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">${aliases?.[key] || key}</mark>`

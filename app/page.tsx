@@ -1,3 +1,4 @@
+import HeroBanner from "./components/Main/HeroBanner";
 import Banner from "./components/Main/Banner";
 import Features from "./components/Main/Features";
 import FAQ from "./components/Main/FAQ";
@@ -6,6 +7,7 @@ import Register from "./components/Auth/Register";
 
 // Define section order and backgrounds: "default" = white, "alt" = gray
 const sections = [
+  { Component: HeroBanner, bg: "default" },
   { Component: Banner, bg: "alt" },
   { Component: Features, bg: "default" },
   { Component: Community, bg: "alt" },

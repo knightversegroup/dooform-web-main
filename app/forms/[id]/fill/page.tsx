@@ -216,7 +216,10 @@ export default function FillFormPage({ params }: PageProps) {
         if (htmlContent && hasPreview) {
             let updatedHtml = htmlContent;
 
-            // First, handle merged fields - split their values into individual placeholders
+            // First, decode HTML entities for curly braces
+            updatedHtml = updatedHtml.replace(/&#123;/g, '{').replace(/&#125;/g, '}');
+
+            // Handle merged fields and regular fields - split their values into individual placeholders
             Object.keys(formData).forEach((key) => {
                 const definition = fieldDefinitions[key];
                 const value = formData[key] || "";
