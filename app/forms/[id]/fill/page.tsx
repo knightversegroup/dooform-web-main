@@ -118,7 +118,7 @@ export default function FillFormPage({ params }: PageProps) {
 
                 setTemplate(foundTemplate);
 
-                // Initialize form data with empty strings
+                // Initialize form data with empty strings from placeholders
                 const placeholders = parsePlaceholders(
                     foundTemplate.placeholders
                 );
@@ -127,6 +127,7 @@ export default function FillFormPage({ params }: PageProps) {
                     const key = p.replace(/\{\{|\}\}/g, '');
                     initialData[key] = "";
                 });
+                // Note: More keys may be added from fieldDefinitions below
                 setFormData(initialData);
 
                 // Fetch field definitions from backend
@@ -142,6 +143,19 @@ export default function FillFormPage({ params }: PageProps) {
                             return;
                         }
                         visibleDefinitions[key] = def;
+                    });
+
+                    // Also initialize formData with keys from field definitions
+                    // This ensures all fields have entries even if not in template placeholders
+                    setFormData((prev) => {
+                        const updated = { ...prev };
+                        Object.keys(visibleDefinitions).forEach((key) => {
+                            const cleanKey = key.replace(/\{\{|\}\}/g, '');
+                            if (!(cleanKey in updated)) {
+                                updated[cleanKey] = "";
+                            }
+                        });
+                        return updated;
                     });
 
                     // Group fields by saved group name (from canvas sections)
@@ -222,7 +236,7 @@ export default function FillFormPage({ params }: PageProps) {
                         const fieldValue = splitValues[fieldKey] || "";
                         const placeholder = `{{${fieldKey}}}`;
                         const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                        const regex = new RegExp(escapedPlaceholder, "g");
+                        const regex = new RegExp(escapedPlaceholder, "gi");
                         const fieldColor = fieldColorMap[fieldKey] || sectionColor;
 
                         if (fieldValue) {
@@ -244,7 +258,7 @@ export default function FillFormPage({ params }: PageProps) {
                     // Regular field - replace single placeholder
                     const placeholder = `{{${key}}}`;
                     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                    const regex = new RegExp(escapedPlaceholder, "g");
+                    const regex = new RegExp(escapedPlaceholder, "gi");
 
                     if (value) {
                         if (isActive) {
@@ -263,8 +277,19 @@ export default function FillFormPage({ params }: PageProps) {
                 }
             });
 
-            // Also remove any remaining {{...}} placeholders that weren't in formData
-            updatedHtml = updatedHtml.replace(/\{\{([^}]+)\}\}/g, '');
+            // Also handle any remaining {{...}} placeholders that weren't in formData
+            // This catches placeholders that exist in HTML but weren't in the template's placeholders array
+            updatedHtml = updatedHtml.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+                // Check if we have a value for this key in formData (case-insensitive)
+                const formDataKey = Object.keys(formData).find(
+                    k => k.toLowerCase() === key.toLowerCase()
+                );
+                if (formDataKey && formData[formDataKey]) {
+                    return formData[formDataKey];
+                }
+                // If no value, remove the placeholder
+                return '';
+            });
 
             setPreviewHtml(updatedHtml);
         }
