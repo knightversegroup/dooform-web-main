@@ -136,12 +136,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setAccessToken(data.data.access_token);
+      // Update the API client with the new token immediately
+      apiClient.setAccessToken(data.data.access_token);
     } catch (error) {
       console.error('Token refresh error:', error);
-      logout();
       throw error;
     }
-  }, [refreshToken, logout]);
+  }, [refreshToken]);
+
+  // Register auth callbacks with API client for automatic 401 handling
+  useEffect(() => {
+    if (isInitialized) {
+      apiClient.setAuthCallbacks(refreshAccessToken, logout);
+    }
+  }, [isInitialized, refreshAccessToken, logout]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prevUser) => {

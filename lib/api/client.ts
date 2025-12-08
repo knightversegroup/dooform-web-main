@@ -32,6 +32,10 @@ import {
 class ApiClient {
   private baseUrl: string;
   private accessToken: string | null = null;
+  private refreshTokenCallback: (() => Promise<void>) | null = null;
+  private logoutCallback: (() => void) | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -39,6 +43,15 @@ class ApiClient {
 
   setAccessToken(token: string | null) {
     this.accessToken = token;
+  }
+
+  // Register callbacks for token refresh and logout
+  setAuthCallbacks(
+    refreshCallback: () => Promise<void>,
+    logoutCallback: () => void
+  ) {
+    this.refreshTokenCallback = refreshCallback;
+    this.logoutCallback = logoutCallback;
   }
 
   private getAuthHeaders(): HeadersInit {
@@ -49,12 +62,99 @@ class ApiClient {
     return headers;
   }
 
+  // Handle token refresh with deduplication (prevents multiple refresh calls)
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (!this.refreshTokenCallback) {
+      return false;
+    }
+
+    // If already refreshing, wait for the existing refresh to complete
+    if (this.isRefreshing && this.refreshPromise) {
+      try {
+        await this.refreshPromise;
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshTokenCallback();
+
+    try {
+      await this.refreshPromise;
+      return true;
+    } catch (error) {
+      console.error('[ApiClient] Token refresh failed:', error);
+      return false;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
     }
     return response.json();
+  }
+
+  // Handle response with automatic 401 retry
+  private async handleResponseWithRetry<T>(
+    response: Response,
+    retryFn: () => Promise<Response>
+  ): Promise<T> {
+    if (response.status === 401) {
+      // Try to refresh the token
+      const refreshed = await this.handleTokenRefresh();
+
+      if (refreshed) {
+        // Retry the original request with the new token
+        const retryResponse = await retryFn();
+
+        if (retryResponse.status === 401) {
+          // Still getting 401 after refresh, logout
+          if (this.logoutCallback) {
+            this.logoutCallback();
+          }
+          throw new Error('Session expired. Please login again.');
+        }
+
+        return this.handleResponse<T>(retryResponse);
+      } else {
+        // Refresh failed, logout
+        if (this.logoutCallback) {
+          this.logoutCallback();
+        }
+        throw new Error('Session expired. Please login again.');
+      }
+    }
+
+    return this.handleResponse<T>(response);
+  }
+
+  // Helper method to wrap fetch calls with automatic 401 retry
+  private async fetchWithRetry<T>(
+    url: string,
+    options: RequestInit,
+    useRetry = true
+  ): Promise<T> {
+    const makeRequest = () => fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...this.getAuthHeaders(),
+      },
+    });
+
+    const response = await makeRequest();
+
+    if (useRetry) {
+      return this.handleResponseWithRetry<T>(response, makeRequest);
+    }
+    return this.handleResponse<T>(response);
   }
 
   // Generic HTTP methods
@@ -74,36 +174,39 @@ class ApiClient {
       }
     }
 
-    const response = await fetch(fullUrl, {
+    const makeRequest = () => fetch(fullUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...this.getAuthHeaders(),
       },
     });
-    const data = await this.handleResponse<T>(response);
+
+    const response = await makeRequest();
+    const data = await this.handleResponseWithRetry<T>(response, makeRequest);
     return { data };
   }
 
   async post<T = unknown>(url: string, body?: unknown, config?: { headers?: HeadersInit }): Promise<{ data: T }> {
     const isFormData = body instanceof FormData;
-    const headers: HeadersInit = {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...this.getAuthHeaders(),
-      ...config?.headers,
-    };
 
-    const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
+    const makeRequest = () => fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
       method: 'POST',
-      headers,
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...this.getAuthHeaders(),
+        ...config?.headers,
+      },
       body: isFormData ? body : JSON.stringify(body),
     });
-    const data = await this.handleResponse<T>(response);
+
+    const response = await makeRequest();
+    const data = await this.handleResponseWithRetry<T>(response, makeRequest);
     return { data };
   }
 
   async put<T = unknown>(url: string, body?: unknown): Promise<{ data: T }> {
-    const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
+    const makeRequest = () => fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -111,19 +214,23 @@ class ApiClient {
       },
       body: JSON.stringify(body),
     });
-    const data = await this.handleResponse<T>(response);
+
+    const response = await makeRequest();
+    const data = await this.handleResponseWithRetry<T>(response, makeRequest);
     return { data };
   }
 
   async delete<T = unknown>(url: string): Promise<{ data: T }> {
-    const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
+    const makeRequest = () => fetch(`${this.baseUrl.replace('/api/v1', '')}${url}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         ...this.getAuthHeaders(),
       },
     });
-    const data = await this.handleResponse<T>(response);
+
+    const response = await makeRequest();
+    const data = await this.handleResponseWithRetry<T>(response, makeRequest);
     return { data };
   }
 
@@ -151,22 +258,38 @@ class ApiClient {
       formData.append('htmlPreview', htmlFile);
     }
 
-    const response = await fetch(`${this.baseUrl}/upload`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/upload`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: formData,
     });
 
-    return this.handleResponse<UploadResponse>(response);
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<UploadResponse>(response, makeRequest);
   }
 
   async getHTMLPreview(templateId: string): Promise<string> {
     try {
-      const response = await fetch(`${this.baseUrl}/templates/${templateId}/preview`, {
+      const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/preview`, {
         headers: this.getAuthHeaders(),
       });
+
+      const response = await makeRequest();
+
+      // Handle 401 with retry
+      if (response.status === 401) {
+        const refreshed = await this.handleTokenRefresh();
+        if (refreshed) {
+          const retryResponse = await makeRequest();
+          if (!retryResponse.ok) {
+            console.warn(`HTML preview not available: ${retryResponse.status}`);
+            return '';
+          }
+          return retryResponse.text();
+        }
+      }
+
       if (!response.ok) {
-        // Return empty string instead of throwing if preview doesn't exist or server error
         console.warn(`HTML preview not available: ${response.status}`);
         return '';
       }
@@ -178,33 +301,41 @@ class ApiClient {
   }
 
   async getAllTemplates(): Promise<TemplatesResponse> {
-    const response = await fetch(`${this.baseUrl}/templates`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<TemplatesResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<TemplatesResponse>(response, makeRequest);
   }
 
   async getTemplate(templateId: string): Promise<Template> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<Template>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<Template>(response, makeRequest);
   }
 
   async getPlaceholders(templateId: string): Promise<PlaceholdersResponse> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/placeholders`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/placeholders`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<PlaceholdersResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<PlaceholdersResponse>(response, makeRequest);
   }
 
   // Field Definitions (auto-detected from placeholders)
 
   async getFieldDefinitions(templateId: string): Promise<Record<string, FieldDefinition>> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/field-definitions`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/field-definitions`, {
       headers: this.getAuthHeaders(),
     });
-    const result = await this.handleResponse<FieldDefinitionsResponse>(response);
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<FieldDefinitionsResponse>(response, makeRequest);
     return result.field_definitions;
   }
 
@@ -212,7 +343,7 @@ class ApiClient {
     templateId: string,
     fieldDefinitions: Record<string, FieldDefinition>
   ): Promise<{ message: string; template: Template }> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/field-definitions`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/field-definitions`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -220,15 +351,19 @@ class ApiClient {
       },
       body: JSON.stringify({ field_definitions: fieldDefinitions }),
     });
-    return this.handleResponse<{ message: string; template: Template }>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string; template: Template }>(response, makeRequest);
   }
 
   async regenerateFieldDefinitions(templateId: string): Promise<Record<string, FieldDefinition>> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/field-definitions/regenerate`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/field-definitions/regenerate`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
     });
-    const result = await this.handleResponse<{ message: string; field_definitions: Record<string, FieldDefinition> }>(response);
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ message: string; field_definitions: Record<string, FieldDefinition> }>(response, makeRequest);
     return result.field_definitions;
   }
 
@@ -240,7 +375,7 @@ class ApiClient {
       body.organization_id = organizationId;
     }
 
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/process`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/process`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -249,7 +384,8 @@ class ApiClient {
       body: JSON.stringify(body),
     });
 
-    return this.handleResponse<ProcessResponse>(response);
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<ProcessResponse>(response, makeRequest);
   }
 
   getDownloadUrl(documentId: string, format: 'docx' | 'pdf' = 'docx'): string {
@@ -258,9 +394,29 @@ class ApiClient {
   }
 
   async downloadDocument(documentId: string, format: 'docx' | 'pdf' = 'docx'): Promise<Blob> {
-    const response = await fetch(this.getDownloadUrl(documentId, format), {
+    const makeRequest = () => fetch(this.getDownloadUrl(documentId, format), {
       headers: this.getAuthHeaders(),
     });
+
+    const response = await makeRequest();
+
+    // Handle 401 with retry for blob responses
+    if (response.status === 401) {
+      const refreshed = await this.handleTokenRefresh();
+      if (refreshed) {
+        const retryResponse = await makeRequest();
+        if (!retryResponse.ok) {
+          throw new Error(`Download failed: ${retryResponse.statusText}`);
+        }
+        return retryResponse.blob();
+      } else {
+        if (this.logoutCallback) {
+          this.logoutCallback();
+        }
+        throw new Error('Session expired. Please login again.');
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`);
     }
@@ -269,11 +425,13 @@ class ApiClient {
 
   // Regenerate document from history
   async regenerateDocument(documentId: string): Promise<ProcessResponse> {
-    const response = await fetch(`${this.baseUrl}/documents/${documentId}/regenerate`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/documents/${documentId}/regenerate`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<ProcessResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<ProcessResponse>(response, makeRequest);
   }
 
   // Activity Logs
@@ -291,17 +449,21 @@ class ApiClient {
     if (method) params.append('method', method);
     if (path) params.append('path', path);
 
-    const response = await fetch(`${this.baseUrl}/logs?${params.toString()}`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/logs?${params.toString()}`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<ActivityLogsResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<ActivityLogsResponse>(response, makeRequest);
   }
 
   async getLogStats(): Promise<LogStatsResponse> {
-    const response = await fetch(`${this.baseUrl}/logs/stats`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/logs/stats`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<LogStatsResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<LogStatsResponse>(response, makeRequest);
   }
 
   async getProcessLogs(limit = 50, page = 1): Promise<ProcessLogsResponse> {
@@ -310,17 +472,21 @@ class ApiClient {
       page: page.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/logs/process?${params.toString()}`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/logs/process?${params.toString()}`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<ProcessLogsResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<ProcessLogsResponse>(response, makeRequest);
   }
 
   async getHistory(): Promise<HistoryResponse> {
-    const response = await fetch(`${this.baseUrl}/history`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/history`, {
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<HistoryResponse>(response);
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<HistoryResponse>(response, makeRequest);
   }
 
   async updateTemplate(
@@ -350,15 +516,16 @@ class ApiClient {
 
       formData.append('htmlPreview', htmlFile);
 
-      const response = await fetch(`${this.baseUrl}/templates/${templateId}`, {
+      const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: formData,
       });
 
-      return this.handleResponse<{ message: string; template: Template }>(response);
+      const response = await makeRequest();
+      return this.handleResponseWithRetry<{ message: string; template: Template }>(response, makeRequest);
     } else {
-      const response = await fetch(`${this.baseUrl}/templates/${templateId}`, {
+      const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -381,17 +548,19 @@ class ApiClient {
         }),
       });
 
-      return this.handleResponse<{ message: string; template: Template }>(response);
+      const response = await makeRequest();
+      return this.handleResponseWithRetry<{ message: string; template: Template }>(response, makeRequest);
     }
   }
 
   async deleteTemplate(templateId: string): Promise<{ message: string }> {
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
     });
 
-    return this.handleResponse<{ message: string }>(response);
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
   }
 
   // Replace template files (DOCX and/or HTML)
@@ -417,13 +586,14 @@ class ApiClient {
       formData.append('regenerate_fields', 'true');
     }
 
-    const response = await fetch(`${this.baseUrl}/templates/${templateId}/files`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/files`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: formData,
     });
 
-    return this.handleResponse<{ message: string; template_id: string; filename: string; placeholders: string[]; template: Template }>(response);
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string; template_id: string; filename: string; placeholders: string[]; template: Template }>(response, makeRequest);
   }
 
   // Health Check
