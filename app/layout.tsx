@@ -296,7 +296,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
+    <html lang="th" className="light" style={{ colorScheme: 'light' }}>
       <head>
         <script
           type="application/ld+json"
