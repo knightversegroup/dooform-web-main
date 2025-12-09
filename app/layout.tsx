@@ -201,13 +201,6 @@ const jsonLd = {
         "Webhooks API สำหรับธุรกิจ",
         "ยื่นสถานทูตได้ทันที",
       ],
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        ratingCount: "150",
-        bestRating: "5",
-        worstRating: "1",
-      },
     },
     {
       "@type": "Service",
