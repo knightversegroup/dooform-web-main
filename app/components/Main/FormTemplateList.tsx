@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/context";
 import {
   Template,
   TemplateType,
@@ -368,6 +369,7 @@ function SuggestedTopics({ categories }: { categories: string[] }) {
 
 // Main Component
 export default function FormTemplateList() {
+  const { isAuthenticated } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [orphanTemplates, setOrphanTemplates] = useState<Template[]>([]);
@@ -680,30 +682,32 @@ export default function FormTemplateList() {
               ))}
             </div>
 
-            {/* Action buttons */}
-            <div className="space-y-2 pt-4 border-t border-gray-200">
-              <Link
-                href="/forms/new"
-                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white rounded text-sm font-medium hover:bg-[#005f7a] transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                เพิ่มเทมเพลต
-              </Link>
-              <Link
-                href="/settings/document-types"
-                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
-              >
-                <FolderOpen className="w-4 h-4" />
-                จัดการประเภทเอกสาร
-              </Link>
-              <Link
-                href="/settings/filters"
-                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                จัดการตัวกรอง
-              </Link>
-            </div>
+            {/* Action buttons - only show for logged in users */}
+            {isAuthenticated && (
+              <div className="space-y-2 pt-4 border-t border-gray-200">
+                <Link
+                  href="/forms/new"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white rounded text-sm font-medium hover:bg-[#005f7a] transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  เพิ่มเทมเพลต
+                </Link>
+                <Link
+                  href="/settings/document-types"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  จัดการประเภทเอกสาร
+                </Link>
+                <Link
+                  href="/settings/filters"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  จัดการตัวกรอง
+                </Link>
+              </div>
+            )}
           </aside>
 
           {/* Main Content */}

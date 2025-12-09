@@ -15,9 +15,9 @@ import Register from "./components/Auth/Register";
 const sections = [
   { Component: HeroBanner, bg: "default" },
   { Component: Banner, bg: "alt" },
-  { Component: TrustedBy, bg: "default" },
-  { Component: Features, bg: "alt" },
-  { Component: UseCase, bg: "default" },
+  // { Component: TrustedBy, bg: "default" },
+  { Component: Features, bg: "default" },
+  // { Component: UseCase, bg: "default" },
   { Component: BusinessSolutions, bg: "alt" },
   { Component: APIStats, bg: "default" },
   { Component: Community, bg: "alt" },
