@@ -47,6 +47,9 @@ export interface FieldValidation {
   required?: boolean;
 }
 
+// Date format type for display formatting
+export type DateFormat = 'yyyy/mm/dd' | 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'dd MMM yyyy';
+
 export interface FieldDefinition {
   placeholder: string;
   dataType: DataType;
@@ -59,6 +62,7 @@ export interface FieldDefinition {
   groupOrder?: number; // Order within the group
   order?: number;      // Global display order for the field (user can reorder)
   defaultValue?: string; // Default value for the field (e.g., "/" for checkbox)
+  dateFormat?: DateFormat; // Date display format (for date fields)
   // Merged field properties
   isMerged?: boolean;           // Whether this is a merged field
   mergedFields?: string[];      // List of original placeholder keys that are merged

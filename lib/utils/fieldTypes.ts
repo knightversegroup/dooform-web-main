@@ -6,10 +6,11 @@ import type {
     InputType,
     FieldValidation,
     FieldDefinition,
+    DateFormat,
 } from '@/lib/api/types';
 
 // Re-export types for convenience
-export type { DataType, Entity, InputType, FieldValidation, FieldDefinition };
+export type { DataType, Entity, InputType, FieldValidation, FieldDefinition, DateFormat };
 
 // Thai name prefixes
 export const NAME_PREFIX_OPTIONS = [
@@ -149,6 +150,105 @@ export const LUNAR_MONTH_OPTIONS = [
     'เดือนสิบเอ็ด',
     'เดือนสิบสอง',
 ];
+
+// Date format options
+export const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string; example: string }[] = [
+    { value: 'yyyy/mm/dd', label: 'yyyy/mm/dd', example: '2025/02/01' },
+    { value: 'dd/mm/yyyy', label: 'dd/mm/yyyy', example: '01/02/2025' },
+    { value: 'mm/dd/yyyy', label: 'mm/dd/yyyy', example: '02/01/2025' },
+    { value: 'dd MMM yyyy', label: 'dd MMM yyyy', example: '01 Feb 2025' },
+];
+
+// Month names for formatting
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Format date from ISO (YYYY-MM-DD) to selected format
+export function formatDateToDisplay(isoDate: string, format: DateFormat): string {
+    if (!isoDate) return '';
+
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+
+    const [year, month, day] = parts;
+
+    switch (format) {
+        case 'yyyy/mm/dd':
+            return `${year}/${month}/${day}`;
+        case 'dd/mm/yyyy':
+            return `${day}/${month}/${year}`;
+        case 'mm/dd/yyyy':
+            return `${month}/${day}/${year}`;
+        case 'dd MMM yyyy':
+            const monthIndex = parseInt(month, 10) - 1;
+            const monthName = MONTH_NAMES_SHORT[monthIndex] || month;
+            return `${day} ${monthName} ${year}`;
+        default:
+            return isoDate;
+    }
+}
+
+// Parse displayed date back to ISO format (YYYY-MM-DD)
+export function parseDateToISO(displayDate: string, format: DateFormat): string {
+    if (!displayDate) return '';
+
+    let year: string, month: string, day: string;
+
+    switch (format) {
+        case 'yyyy/mm/dd': {
+            const parts = displayDate.split('/');
+            if (parts.length !== 3) return displayDate;
+            [year, month, day] = parts;
+            break;
+        }
+        case 'dd/mm/yyyy': {
+            const parts = displayDate.split('/');
+            if (parts.length !== 3) return displayDate;
+            [day, month, year] = parts;
+            break;
+        }
+        case 'mm/dd/yyyy': {
+            const parts = displayDate.split('/');
+            if (parts.length !== 3) return displayDate;
+            [month, day, year] = parts;
+            break;
+        }
+        case 'dd MMM yyyy': {
+            const parts = displayDate.split(' ');
+            if (parts.length !== 3) return displayDate;
+            day = parts[0];
+            const monthName = parts[1];
+            year = parts[2];
+            const monthIndex = MONTH_NAMES_SHORT.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
+            month = monthIndex >= 0 ? String(monthIndex + 1).padStart(2, '0') : '01';
+            break;
+        }
+        default:
+            return displayDate;
+    }
+
+    // Ensure proper padding
+    year = year.padStart(4, '0');
+    month = month.padStart(2, '0');
+    day = day.padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+// Get placeholder pattern for date format
+export function getDatePlaceholder(format: DateFormat): string {
+    switch (format) {
+        case 'yyyy/mm/dd':
+            return 'yyyy/mm/dd';
+        case 'dd/mm/yyyy':
+            return 'dd/mm/yyyy';
+        case 'mm/dd/yyyy':
+            return 'mm/dd/yyyy';
+        case 'dd MMM yyyy':
+            return 'dd MMM yyyy';
+        default:
+            return 'yyyy/mm/dd';
+    }
+}
 
 // Entity detection from prefix
 function detectEntity(key: string): Entity {
