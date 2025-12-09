@@ -2,12 +2,22 @@ import { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
 
-const baseUrl = "https://dooform.com";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dooform.com";
 
-// Get all MDX document slugs dynamically
-function getDocumentSlugs(): string[] {
+// Get file modification time
+function getFileModTime(filePath: string): Date {
+  try {
+    const stats = fs.statSync(filePath);
+    return stats.mtime;
+  } catch {
+    return new Date();
+  }
+}
+
+// Get all MDX document slugs dynamically with modification times
+function getDocumentPages(): { slug: string; lastMod: Date }[] {
   const documentsDir = path.join(process.cwd(), "app/documents");
-  const slugs: string[] = [];
+  const pages: { slug: string; lastMod: Date }[] = [];
 
   function scanDir(dir: string, basePath: string[] = []) {
     try {
@@ -22,14 +32,21 @@ function getDocumentSlugs(): string[] {
 
         if (entry.isFile() && /\.(mdx|md)$/.test(entry.name)) {
           const fileNameWithoutExt = entry.name.replace(/\.(mdx|md)$/, "");
+          const lastMod = getFileModTime(fullPath);
 
           // page.mdx or same-name-as-folder.mdx -> folder route
           if (entry.name === "page.mdx" || entry.name === "page.md" || fileNameWithoutExt === folderName) {
             if (basePath.length > 0) {
-              slugs.push(`/documents/${basePath.join("/")}`);
+              pages.push({
+                slug: `/documents/${basePath.join("/")}`,
+                lastMod,
+              });
             }
           } else {
-            slugs.push(`/documents/${[...basePath, fileNameWithoutExt].join("/")}`);
+            pages.push({
+              slug: `/documents/${[...basePath, fileNameWithoutExt].join("/")}`,
+              lastMod,
+            });
           }
         } else if (entry.isDirectory()) {
           scanDir(fullPath, [...basePath, entry.name]);
@@ -41,13 +58,25 @@ function getDocumentSlugs(): string[] {
   }
 
   scanDir(documentsDir);
-  return slugs;
+  return pages;
+}
+
+// Determine priority based on path depth and type
+function getDocPriority(slug: string): number {
+  // Legal/terms pages get lower priority
+  if (slug.includes("Terms-of-Use")) return 0.4;
+
+  // Top-level documentation pages
+  const depth = slug.split("/").length - 2; // Remove /documents/ from count
+  if (depth === 1) return 0.8;
+  if (depth === 2) return 0.7;
+  return 0.6;
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const currentDate = new Date().toISOString();
 
-  // Static public pages
+  // Static public pages with high priority
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -67,28 +96,33 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
-    {
-      url: `${baseUrl}/login`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
+    // Public auth pages (indexable)
     {
       url: `${baseUrl}/register`,
       lastModified: currentDate,
       changeFrequency: "monthly",
-      priority: 0.5,
+      priority: 0.6,
     },
   ];
 
-  // Dynamic document pages from MDX files
-  const documentSlugs = getDocumentSlugs();
-  const documentPages: MetadataRoute.Sitemap = documentSlugs.map((slug) => ({
-    url: `${baseUrl}${slug}`,
-    lastModified: currentDate,
+  // Dynamic document pages from MDX files with real modification times
+  const documentPages = getDocumentPages();
+  const documentSitemap: MetadataRoute.Sitemap = documentPages.map((page) => ({
+    url: `${baseUrl}${page.slug}`,
+    lastModified: page.lastMod.toISOString(),
     changeFrequency: "monthly" as const,
-    priority: 0.7,
+    priority: getDocPriority(page.slug),
   }));
 
-  return [...staticPages, ...documentPages];
+  // Image sitemap entries for OG images (helps Google discover dynamic images)
+  const ogImagePages: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/api/og?page=home&title=Dooform`,
+      lastModified: currentDate,
+      changeFrequency: "monthly" as const,
+      priority: 0.3,
+    },
+  ];
+
+  return [...staticPages, ...documentSitemap];
 }

@@ -11,6 +11,8 @@ import { AuthProvider } from "@/lib/auth/context";
 import { CookieConsentProvider } from "@/lib/cookie/context";
 import { CookieConsentBanner, Analytics } from "./components/CookieConsent";
 
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dooform.com";
+
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   variable: "--font-ibm-plex-sans-thai",
   subsets: ["thai"],
@@ -30,7 +32,7 @@ const prompt = Prompt({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dooform.com"),
+  metadataBase: new URL(baseUrl),
   title: {
     default: "Dooform | แปลเอกสารราชการไทย-อังกฤษ กรอกฟอร์มอัตโนมัติ ยื่นวีซ่า สถานทูต",
     template: "%s | Dooform - แปลเอกสารราชการออนไลน์",
@@ -98,17 +100,17 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://dooform.com",
+    canonical: baseUrl,
     languages: {
-      "th-TH": "https://dooform.com",
-      "en-US": "https://dooform.com/en",
+      "th-TH": baseUrl,
+      "en-US": `${baseUrl}/en`,
     },
   },
   openGraph: {
     type: "website",
     locale: "th_TH",
     alternateLocale: "en_US",
-    url: "https://dooform.com",
+    url: baseUrl,
     siteName: "Dooform",
     title: "Dooform | กรอกและแปลเอกสารราชการไทย-อังกฤษ ยื่นวีซ่าสถานทูต",
     description:
@@ -139,12 +141,12 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://dooform.com/#organization",
+      "@id": `${baseUrl}/#organization`,
       name: "Dooform",
-      url: "https://dooform.com",
+      url: baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: "https://dooform.com/logo.svg",
+        url: `${baseUrl}/logo.svg`,
       },
       contactPoint: {
         "@type": "ContactPoint",
@@ -159,30 +161,30 @@ const jsonLd = {
     },
     {
       "@type": "WebSite",
-      "@id": "https://dooform.com/#website",
-      url: "https://dooform.com",
+      "@id": `${baseUrl}/#website`,
+      url: baseUrl,
       name: "Dooform",
       publisher: {
-        "@id": "https://dooform.com/#organization",
+        "@id": `${baseUrl}/#organization`,
       },
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://dooform.com/search?q={search_term_string}",
+        target: `${baseUrl}/search?q={search_term_string}`,
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "SoftwareApplication",
-      "@id": "https://dooform.com/#software",
+      "@id": `${baseUrl}/#software`,
       name: "Dooform",
       applicationCategory: "BusinessApplication",
       applicationSubCategory: "Document Translation & Form Filling",
       operatingSystem: "Web",
       description:
         "แพลตฟอร์มกรอกและแปลเอกสารราชการไทย-อังกฤษออนไลน์ รองรับบัตรประชาชน ทะเบียนบ้าน สูติบัตร ทะเบียนสมรส จัดรูปแบบอัตโนมัติตามมาตรฐานสากล ยื่นสถานทูตได้ทันที",
-      url: "https://dooform.com",
+      url: baseUrl,
       author: {
-        "@id": "https://dooform.com/#organization",
+        "@id": `${baseUrl}/#organization`,
       },
       offers: {
         "@type": "Offer",
@@ -208,11 +210,11 @@ const jsonLd = {
     },
     {
       "@type": "Service",
-      "@id": "https://dooform.com/#service",
+      "@id": `${baseUrl}/#service`,
       name: "บริการแปลเอกสารราชการ",
       serviceType: "Document Translation",
       provider: {
-        "@id": "https://dooform.com/#organization",
+        "@id": `${baseUrl}/#organization`,
       },
       areaServed: {
         "@type": "Country",
@@ -259,7 +261,7 @@ const jsonLd = {
     },
     {
       "@type": "FAQPage",
-      "@id": "https://dooform.com/#faq",
+      "@id": `${baseUrl}/#faq`,
       mainEntity: [
         {
           "@type": "Question",

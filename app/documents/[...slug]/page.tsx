@@ -2,8 +2,10 @@ import fs from "fs";
 import path from "path";
 import { notFound } from "next/navigation";
 import { compileMDX } from "next-mdx-remote/rsc";
+import { Metadata } from "next";
 // Renamed import to avoid ESLint hook rule (this is a config function, not a React hook)
 import { useMDXComponents as getMDXComponents } from "@/mdx-components";
+import { generateDocMetadata, formatSlugToTitle } from "@/lib/seo/metadata";
 
 // Allow dynamic params that weren't generated at build time
 export const dynamicParams = true;
@@ -15,6 +17,55 @@ interface PageProps {
     params: Promise<{
         slug: string[];
     }>;
+}
+
+// Frontmatter type for MDX files
+interface MdxFrontmatter {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+    noIndex?: boolean;
+}
+
+// Extract metadata from MDX frontmatter or content
+async function getMdxMeta(slugPath: string[]) {
+    const mdxData = await getMdxContent(slugPath);
+    if (!mdxData) return null;
+
+    const { frontmatter } = await compileMDX<MdxFrontmatter>({
+        source: mdxData.source,
+        options: {
+            parseFrontmatter: true,
+        },
+    });
+
+    // Extract first heading from content as title fallback
+    const titleMatch = mdxData.source.match(/^#\s+(.+)$/m);
+    const extractedTitle = titleMatch ? titleMatch[1] : null;
+
+    // Extract first paragraph as description fallback (skip frontmatter and headings)
+    const contentWithoutFrontmatter = mdxData.source.replace(/^---[\s\S]*?---\n?/, '');
+    const descMatch = contentWithoutFrontmatter.match(/^(?!#|\s*$)(.{50,200})/m);
+    const extractedDesc = descMatch ? descMatch[1].trim() : null;
+
+    return {
+        title: frontmatter.title || extractedTitle || formatSlugToTitle(slugPath[slugPath.length - 1]),
+        description: frontmatter.description || extractedDesc,
+        keywords: frontmatter.keywords,
+        noIndex: frontmatter.noIndex,
+    };
+}
+
+// Generate metadata for each documentation page
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const meta = await getMdxMeta(slug);
+
+    if (!meta) {
+        return {};
+    }
+
+    return generateDocMetadata(slug, meta.title, meta.description || undefined, meta.keywords, meta.noIndex);
 }
 
 // Get MDX content from file path
