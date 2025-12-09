@@ -17,10 +17,16 @@ import {
     Play,
     LogIn,
     Pencil,
+    Eye,
+    ChevronDown,
+    Search,
+    ExternalLink,
+    Info,
+    Lock,
+    Unlock,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { Template, TemplateType, Tier } from "@/lib/api/types";
-import { Button } from "@/app/components/ui/Button";
 import { useAuth } from "@/lib/auth/context";
 
 // Helper to parse placeholders
@@ -64,52 +70,35 @@ const formatFileSize = (bytes: number): string => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-// Get type info
-function getTypeInfo(type: TemplateType) {
-    switch (type) {
-        case "official":
-            return {
-                icon: Globe,
-                label: "Official",
-                bgClass: "bg-primary/10 text-primary",
-            };
-        case "private":
-            return {
-                icon: Building2,
-                label: "Private",
-                bgClass:
-                    "bg-surface-alt text-text-muted border border-border-default",
-            };
-        case "community":
-            return {
-                icon: Users,
-                label: "Community",
-                bgClass:
-                    "bg-surface-alt text-text-muted border border-border-default",
-            };
+// Get tier color
+function getTierColor(tier: Tier): string {
+    switch (tier) {
+        case "enterprise":
+            return "#7c3aed"; // purple
+        case "premium":
+            return "#f59e0b"; // amber
+        case "basic":
+            return "#3b82f6"; // blue
+        case "free":
         default:
-            return {
-                icon: Globe,
-                label: type || "Unknown",
-                bgClass:
-                    "bg-surface-alt text-text-muted border border-border-default",
-            };
+            return "#10b981"; // green
     }
 }
 
-// Get tier styling
-function getTierClass(tier: Tier) {
-    switch (tier) {
-        case "enterprise":
-            return "bg-primary text-white";
-        case "premium":
-            return "bg-primary/80 text-white";
-        case "basic":
-            return "bg-surface-alt text-text-default border border-border-default";
-        case "free":
-        default:
-            return "bg-surface-alt text-text-muted border border-border-default";
-    }
+// Get header background color based on category
+function getHeaderBgColor(category: string): string {
+    const colors: Record<string, string> = {
+        government: "#b91c1c", // red-700
+        legal: "#1d4ed8", // blue-700
+        finance: "#047857", // emerald-700
+        education: "#7c3aed", // violet-600
+        hr: "#c2410c", // orange-700
+        business: "#0f766e", // teal-700
+        identification: "#be185d", // pink-700
+        certificate: "#4338ca", // indigo-700
+        other: "#374151", // gray-700
+    };
+    return colors[category] || "#007398"; // default ScienceDirect blue
 }
 
 interface PageProps {
@@ -122,6 +111,8 @@ export default function TemplateDetailPage({ params }: PageProps) {
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<"about" | "fields">("about");
+    const [showAllFields, setShowAllFields] = useState(false);
 
     useEffect(() => {
         const loadTemplate = async () => {
@@ -158,11 +149,9 @@ export default function TemplateDetailPage({ params }: PageProps) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="container-main section-padding">
-                    <div className="flex items-center justify-center py-24">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    </div>
+            <div className="min-h-screen bg-gray-50">
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="w-8 h-8 text-[#007398] animate-spin" />
                 </div>
             </div>
         );
@@ -170,17 +159,18 @@ export default function TemplateDetailPage({ params }: PageProps) {
 
     if (error || !template) {
         return (
-            <div className="min-h-screen bg-background font-sans">
-                <div className="container-main section-padding">
-                    <div className="text-center py-24">
-                        <h1 className="text-h2 text-foreground mb-4">
-                            {error || "ไม่พบเทมเพลต"}
-                        </h1>
-                        <Button href="/forms" variant="secondary">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            กลับไปหน้ารายการ
-                        </Button>
-                    </div>
+            <div className="min-h-screen bg-gray-50">
+                <div className="max-w-4xl mx-auto px-4 py-24 text-center">
+                    <h1 className="text-2xl font-light text-gray-900 mb-4">
+                        {error || "ไม่พบเทมเพลต"}
+                    </h1>
+                    <Link
+                        href="/forms"
+                        className="inline-flex items-center text-[#007398] hover:underline"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        กลับไปหน้ารายการ
+                    </Link>
                 </div>
             </div>
         );
@@ -188,277 +178,455 @@ export default function TemplateDetailPage({ params }: PageProps) {
 
     const placeholders = parsePlaceholders(template.placeholders);
     const aliases = parseAliases(template.aliases);
-    const typeInfo = getTypeInfo(template.type);
-    const TypeIcon = typeInfo.icon;
+    const headerBgColor = getHeaderBgColor(template.category || template.document_type?.category || "other");
+    const displayedFields = showAllFields ? placeholders : placeholders.slice(0, 8);
 
     return (
-        <div className="min-h-screen bg-background font-sans">
-            <div className="container-main section-padding">
-                {/* Back button */}
-                <div className="mb-6">
-                    <Button href="/forms" variant="secondary" size="sm">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        กลับ
-                    </Button>
+        <div className="min-h-screen bg-gray-50 font-sans">
+            {/* Top bar */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                    <Link
+                        href="/forms"
+                        className="text-sm text-gray-600 hover:text-[#007398]"
+                    >
+                        ← กลับไปหน้าเทมเพลต
+                    </Link>
                 </div>
+            </div>
 
-                {/* Main content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left - Template Info */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Header */}
-                        <div className="bg-background border border-border-default rounded-lg p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <FileText className="w-7 h-7 text-primary" />
-                                </div>
-                                <div className="flex-1">
-                                    <h1 className="text-h2 text-foreground flex items-center gap-2 flex-wrap">
-                                        {template.display_name ||
-                                            template.name ||
-                                            template.filename}
-                                        {template.is_verified && (
-                                            <CheckCircle className="w-5 h-5 text-blue-500" />
-                                        )}
-                                        {template.is_ai_available && (
-                                            <Sparkles className="w-5 h-5 text-purple-500" />
-                                        )}
-                                    </h1>
-                                    {template.description && (
-                                        <p className="text-body text-text-muted mt-2">
-                                            {template.description}
-                                        </p>
-                                    )}
-
-                                    {/* Badges */}
-                                    <div className="flex flex-wrap gap-2 mt-4">
-                                        {template.category && (
-                                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-body-sm font-medium bg-primary/10 text-primary">
-                                                {template.category}
-                                            </span>
-                                        )}
-                                        {template.type && (
-                                            <span
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-body-sm font-medium ${typeInfo.bgClass}`}
-                                            >
-                                                <TypeIcon className="w-4 h-4" />
-                                                {typeInfo.label}
-                                            </span>
-                                        )}
-                                        {template.tier && (
-                                            <span
-                                                className={`inline-flex items-center px-3 py-1.5 rounded-full text-body-sm font-medium ${getTierClass(
-                                                    template.tier
-                                                )}`}
-                                            >
-                                                {template.tier
-                                                    .charAt(0)
-                                                    .toUpperCase() +
-                                                    template.tier.slice(1)}
-                                            </span>
-                                        )}
-                                        {template.group && (
-                                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-body-sm font-medium bg-surface-alt text-text-muted border border-border-default">
-                                                กลุ่ม: {template.group}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
+            {/* Header Banner */}
+            <div
+                className="relative"
+                style={{ backgroundColor: headerBgColor }}
+            >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="flex items-start gap-6">
+                        {/* Template Preview/Icon */}
+                        <div className="flex-shrink-0 hidden sm:block">
+                            <div className="w-32 h-40 bg-white rounded shadow-lg flex items-center justify-center border-4 border-white">
+                                <FileText className="w-16 h-16 text-gray-400" />
                             </div>
                         </div>
 
-                        {/* Placeholders */}
-                        <div className="bg-background border border-border-default rounded-lg p-6">
-                            <h2 className="text-h3 text-foreground mb-4">
-                                ช่องกรอกข้อมูล ({placeholders.length} รายการ)
-                            </h2>
-                            {placeholders.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {placeholders.map((placeholder, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="flex items-center gap-3 p-3 bg-surface-alt rounded-lg"
-                                        >
-                                            <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center text-primary text-body-sm font-semibold">
-                                                {idx + 1}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-body-sm font-medium text-foreground truncate">
-                                                    {aliases[placeholder] ||
-                                                        placeholder}
-                                                </div>
-                                                {aliases[placeholder] && (
-                                                    <div className="text-caption text-text-muted font-mono truncate">
-                                                        {placeholder}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-body-sm text-text-muted">
-                                    ไม่พบช่องกรอกข้อมูลในเทมเพลตนี้
+                        {/* Template Info */}
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-2xl md:text-3xl font-light text-white leading-tight mb-2">
+                                {template.display_name ||
+                                    template.name ||
+                                    template.filename}
+                            </h1>
+
+                            {/* Tags/Badges */}
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                {template.is_verified && (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-sm">
+                                        <CheckCircle className="w-4 h-4" />
+                                        ยืนยันแล้ว
+                                    </span>
+                                )}
+                                {template.is_ai_available && (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-sm">
+                                        <Sparkles className="w-4 h-4" />
+                                        รองรับ AI
+                                    </span>
+                                )}
+                                {template.tier === "free" && (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-sm">
+                                        <Unlock className="w-4 h-4" />
+                                        ใช้งานฟรี
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Short description */}
+                            {template.description && (
+                                <p className="text-white/80 text-sm max-w-2xl">
+                                    {template.description}
                                 </p>
                             )}
                         </div>
 
-                        {/* Additional Info */}
-                        {(template.remarks || template.original_source) && (
-                            <div className="bg-background border border-border-default rounded-lg p-6">
-                                <h2 className="text-h3 text-foreground mb-4">
-                                    ข้อมูลเพิ่มเติม
-                                </h2>
-                                <div className="space-y-4">
-                                    {template.original_source && (
-                                        <div>
-                                            <div className="text-body-sm font-medium text-foreground mb-1">
-                                                แหล่งที่มา
-                                            </div>
-                                            <div className="text-body-sm text-text-muted">
-                                                {template.original_source}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {template.remarks && (
-                                        <div>
-                                            <div className="text-body-sm font-medium text-foreground mb-1">
-                                                หมายเหตุ
-                                            </div>
-                                            <div className="text-body-sm text-text-muted">
-                                                {template.remarks}
-                                            </div>
-                                        </div>
-                                    )}
+                        {/* Stats */}
+                        <div className="hidden lg:flex items-center gap-8 text-white">
+                            <div className="text-center">
+                                <div className="text-3xl font-light">
+                                    {placeholders.length}
                                 </div>
+                                <div className="text-sm text-white/70">ช่องกรอก</div>
+                            </div>
+                            <div className="w-px h-12 bg-white/30" />
+                            <div className="text-center">
+                                <div className="text-3xl font-light capitalize">
+                                    {template.tier || "Free"}
+                                </div>
+                                <div className="text-sm text-white/70">ระดับ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Navigation Bar */}
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between">
+                        {/* Left - Tabs */}
+                        <div className="flex items-center">
+                            <button
+                                onClick={() => setActiveTab("about")}
+                                className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors ${
+                                    activeTab === "about"
+                                        ? "border-[#007398] text-[#007398]"
+                                        : "border-transparent text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                รายละเอียด
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("fields")}
+                                className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors ${
+                                    activeTab === "fields"
+                                        ? "border-[#007398] text-[#007398]"
+                                        : "border-transparent text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                ช่องกรอก ({placeholders.length})
+                            </button>
+                            {template.gcs_path_html && (
+                                <Link
+                                    href={`/forms/${templateId}/preview`}
+                                    className="px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                                >
+                                    ดูตัวอย่าง
+                                    <ExternalLink className="w-3 h-3" />
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Right - Actions */}
+                        <div className="flex items-center gap-2">
+                            {authLoading ? (
+                                <div className="py-2 px-4">
+                                    <Loader2 className="w-5 h-5 text-[#007398] animate-spin" />
+                                </div>
+                            ) : isAuthenticated ? (
+                                <Link
+                                    href={`/forms/${templateId}/fill`}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
+                                >
+                                    <Play className="w-4 h-4" />
+                                    เริ่มกรอกข้อมูล
+                                </Link>
+                            ) : (
+                                <Link
+                                    href={`/login?redirect=/forms/${templateId}/fill`}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
+                                >
+                                    <LogIn className="w-4 h-4" />
+                                    เข้าสู่ระบบเพื่อใช้งาน
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex gap-8">
+                    {/* Left Column - Main Content */}
+                    <div className="flex-1 min-w-0">
+                        {activeTab === "about" && (
+                            <div className="bg-white rounded-lg border border-gray-200 p-6">
+                                <h2 className="text-xl font-medium text-gray-900 mb-4">
+                                    เกี่ยวกับเทมเพลต
+                                </h2>
+
+                                {template.description ? (
+                                    <div className="prose prose-sm max-w-none text-gray-700 mb-6">
+                                        <p>{template.description}</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm mb-6">
+                                        ไม่มีคำอธิบายสำหรับเทมเพลตนี้
+                                    </p>
+                                )}
+
+                                {/* Quick Info */}
+                                <div className="border-t border-gray-200 pt-6">
+                                    <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-1">
+                                        ข้อมูลเบื้องต้น
+                                        <Info className="w-4 h-4 text-gray-400" />
+                                    </h3>
+                                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                        {template.category && (
+                                            <div>
+                                                <dt className="text-gray-500">หมวดหมู่</dt>
+                                                <dd className="text-gray-900 font-medium">
+                                                    {template.category}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {template.type && (
+                                            <div>
+                                                <dt className="text-gray-500">ประเภท</dt>
+                                                <dd className="text-gray-900 font-medium capitalize">
+                                                    {template.type}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {template.author && (
+                                            <div>
+                                                <dt className="text-gray-500">ผู้สร้าง</dt>
+                                                <dd className="text-gray-900">{template.author}</dd>
+                                            </div>
+                                        )}
+                                        {template.original_source && (
+                                            <div>
+                                                <dt className="text-gray-500">แหล่งที่มา</dt>
+                                                <dd className="text-gray-900">
+                                                    {template.original_source}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {template.created_at && (
+                                            <div>
+                                                <dt className="text-gray-500">วันที่สร้าง</dt>
+                                                <dd className="text-gray-900">
+                                                    {formatDate(template.created_at)}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {template.file_size > 0 && (
+                                            <div>
+                                                <dt className="text-gray-500">ขนาดไฟล์</dt>
+                                                <dd className="text-gray-900">
+                                                    {formatFileSize(template.file_size)}
+                                                </dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                </div>
+
+                                {/* Fields Preview */}
+                                {placeholders.length > 0 && (
+                                    <div className="border-t border-gray-200 pt-6 mt-6">
+                                        <h3 className="text-sm font-medium text-gray-900 mb-3">
+                                            ช่องกรอกข้อมูล ({placeholders.length} รายการ)
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {displayedFields.map((field, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="inline-flex items-center px-2.5 py-1 rounded text-xs bg-gray-100 text-gray-700"
+                                                >
+                                                    {aliases[field] || field.replace(/[{}]/g, "")}
+                                                </span>
+                                            ))}
+                                            {placeholders.length > 8 && !showAllFields && (
+                                                <button
+                                                    onClick={() => setShowAllFields(true)}
+                                                    className="inline-flex items-center px-2.5 py-1 rounded text-xs bg-[#007398]/10 text-[#007398] hover:bg-[#007398]/20"
+                                                >
+                                                    +{placeholders.length - 8} อื่นๆ
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => setActiveTab("fields")}
+                                            className="mt-3 text-sm text-[#007398] hover:underline"
+                                        >
+                                            ดูรายละเอียดช่องกรอกทั้งหมด →
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Remarks */}
+                                {template.remarks && (
+                                    <div className="border-t border-gray-200 pt-6 mt-6">
+                                        <h3 className="text-sm font-medium text-gray-900 mb-2">
+                                            หมายเหตุ
+                                        </h3>
+                                        <p className="text-sm text-gray-600">
+                                            {template.remarks}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === "fields" && (
+                            <div className="bg-white rounded-lg border border-gray-200 p-6">
+                                <h2 className="text-xl font-medium text-gray-900 mb-4">
+                                    ช่องกรอกข้อมูล ({placeholders.length} รายการ)
+                                </h2>
+
+                                {placeholders.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {placeholders.map((placeholder, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                            >
+                                                <div className="w-8 h-8 bg-[#007398]/10 rounded flex items-center justify-center text-[#007398] text-sm font-medium flex-shrink-0">
+                                                    {idx + 1}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {aliases[placeholder] ||
+                                                            placeholder.replace(/[{}]/g, "")}
+                                                    </div>
+                                                    {aliases[placeholder] && (
+                                                        <div className="text-xs text-gray-500 font-mono">
+                                                            {placeholder}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm">
+                                        ไม่พบช่องกรอกข้อมูลในเทมเพลตนี้
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* Right - Actions & Meta */}
-                    <div className="space-y-6">
-                        {/* Actions */}
-                        <div className="bg-background border border-border-default rounded-lg p-6">
-                            <h2 className="text-h4 text-foreground mb-4">
+                    {/* Right Column - Sidebar */}
+                    <div className="w-72 flex-shrink-0 hidden lg:block">
+                        {/* Actions Card */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-4">
                                 การดำเนินการ
-                            </h2>
+                            </h3>
                             <div className="space-y-3">
                                 {authLoading ? (
-                                    <div className="flex items-center justify-center py-2">
-                                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="w-5 h-5 text-[#007398] animate-spin" />
                                     </div>
                                 ) : isAuthenticated ? (
-                                    <Button
-                                        href={`/forms/${templateId}/fill`}
-                                        variant="primary"
-                                        className="w-full justify-center"
-                                    >
-                                        <Play className="w-4 h-4 mr-2" />
-                                        เริ่มกรอกแบบฟอร์ม
-                                    </Button>
+                                    <>
+                                        <Link
+                                            href={`/forms/${templateId}/fill`}
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                            เริ่มกรอกข้อมูล
+                                        </Link>
+                                        {template.gcs_path_html && (
+                                            <Link
+                                                href={`/forms/${templateId}/preview`}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                                ดูตัวอย่างเทมเพลต
+                                            </Link>
+                                        )}
+                                        <Link
+                                            href={`/forms/${templateId}/edit`}
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                            แก้ไขข้อมูล
+                                        </Link>
+                                    </>
                                 ) : (
                                     <>
-                                        <Button
+                                        <Link
                                             href={`/login?redirect=/forms/${templateId}/fill`}
-                                            variant="primary"
-                                            className="w-full justify-center"
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
                                         >
-                                            <LogIn className="w-4 h-4 mr-2" />
-                                            เข้าสู่ระบบเพื่อกรอกแบบฟอร์ม
-                                        </Button>
-                                        <p className="text-caption text-text-muted text-center">
+                                            <LogIn className="w-4 h-4" />
+                                            เข้าสู่ระบบเพื่อใช้งาน
+                                        </Link>
+                                        <p className="text-xs text-gray-500 text-center">
                                             ยังไม่มีบัญชี?{" "}
                                             <Link
                                                 href={`/register?redirect=/forms/${templateId}/fill`}
-                                                className="text-primary hover:underline"
+                                                className="text-[#007398] hover:underline"
                                             >
                                                 สมัครสมาชิก
                                             </Link>
                                         </p>
                                     </>
                                 )}
-                                {template.gcs_path_html && (
-                                    <Button
-                                        href={`/forms/${templateId}/preview`}
-                                        variant="secondary"
-                                        className="w-full justify-center"
-                                    >
-                                        <FileText className="w-4 h-4 mr-2" />
-                                        ดูตัวอย่าง
-                                    </Button>
-                                )}
-                                {isAuthenticated && (
-                                    <Button
-                                        href={`/forms/${templateId}/edit`}
-                                        variant="secondary"
-                                        className="w-full justify-center"
-                                    >
-                                        <Pencil className="w-4 h-4 mr-2" />
-                                        แก้ไขรายละเอียด
-                                    </Button>
-                                )}
                             </div>
                         </div>
 
-                        {/* Meta Info */}
-                        <div className="bg-background border border-border-default rounded-lg p-6">
-                            <h2 className="text-h4 text-foreground mb-4">
-                                ข้อมูลเทมเพลต
-                            </h2>
-                            <div className="space-y-4">
-                                {template.author && (
-                                    <div className="flex items-center gap-3">
-                                        <User className="w-5 h-5 text-text-muted flex-shrink-0" />
-                                        <div>
-                                            <div className="text-caption text-text-muted">
-                                                ผู้สร้าง
-                                            </div>
-                                            <div className="text-body-sm text-foreground">
-                                                {template.author}
-                                            </div>
+                        {/* Access Info */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                                การเข้าถึง
+                            </h3>
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                    {template.tier === "free" ? (
+                                        <Unlock className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                    ) : (
+                                        <Lock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                                    )}
+                                    <div>
+                                        <div className="text-sm font-medium text-gray-900 capitalize">
+                                            {template.tier || "Free"}
                                         </div>
+                                        <p className="text-xs text-gray-500">
+                                            {template.tier === "free"
+                                                ? "ใช้งานได้ฟรีไม่มีค่าใช้จ่าย"
+                                                : `ต้องเป็นสมาชิกระดับ ${template.tier}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Template Info */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-5">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                                ข้อมูลเทมเพลต
+                            </h3>
+                            <dl className="space-y-3 text-sm">
+                                {template.author && (
+                                    <div className="flex items-center gap-2">
+                                        <User className="w-4 h-4 text-gray-400" />
+                                        <span className="text-gray-600">
+                                            {template.author}
+                                        </span>
                                     </div>
                                 )}
                                 {template.created_at && (
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="w-5 h-5 text-text-muted flex-shrink-0" />
-                                        <div>
-                                            <div className="text-caption text-text-muted">
-                                                วันที่สร้าง
-                                            </div>
-                                            <div className="text-body-sm text-foreground">
-                                                {formatDate(template.created_at)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                {template.updated_at && (
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="w-5 h-5 text-text-muted flex-shrink-0" />
-                                        <div>
-                                            <div className="text-caption text-text-muted">
-                                                อัปเดตล่าสุด
-                                            </div>
-                                            <div className="text-body-sm text-foreground">
-                                                {formatDate(template.updated_at)}
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                        <span className="text-gray-600">
+                                            {formatDate(template.created_at)}
+                                        </span>
                                     </div>
                                 )}
                                 {template.file_size > 0 && (
-                                    <div className="flex items-center gap-3">
-                                        <Download className="w-5 h-5 text-text-muted flex-shrink-0" />
-                                        <div>
-                                            <div className="text-caption text-text-muted">
-                                                ขนาดไฟล์
-                                            </div>
-                                            <div className="text-body-sm text-foreground">
-                                                {formatFileSize(template.file_size)}
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        <Download className="w-4 h-4 text-gray-400" />
+                                        <span className="text-gray-600">
+                                            {formatFileSize(template.file_size)}
+                                        </span>
                                     </div>
                                 )}
-                            </div>
+                                {template.type && (
+                                    <div className="flex items-center gap-2">
+                                        {template.type === "official" ? (
+                                            <Globe className="w-4 h-4 text-gray-400" />
+                                        ) : template.type === "private" ? (
+                                            <Building2 className="w-4 h-4 text-gray-400" />
+                                        ) : (
+                                            <Users className="w-4 h-4 text-gray-400" />
+                                        )}
+                                        <span className="text-gray-600 capitalize">
+                                            {template.type}
+                                        </span>
+                                    </div>
+                                )}
+                            </dl>
                         </div>
                     </div>
                 </div>

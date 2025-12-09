@@ -18,9 +18,12 @@ import {
     Upload,
     File,
     FileCode,
+    FolderOpen,
+    Link as LinkIcon,
+    Unlink,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup } from "@/lib/api/types";
+import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType } from "@/lib/api/types";
 import { detectMergeableGroups, createMergedFieldDefinition } from "@/lib/utils/fieldTypes";
 import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
@@ -81,6 +84,14 @@ export default function EditFormPage({ params }: PageProps) {
     const [fileUploadSuccess, setFileUploadSuccess] = useState(false);
     const [regenerateFieldsOnUpload, setRegenerateFieldsOnUpload] = useState(true);
 
+    // Document type state
+    const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
+    const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>('');
+    const [variantName, setVariantName] = useState<string>('');
+    const [variantOrder, setVariantOrder] = useState<number>(0);
+    const [docTypeAssigning, setDocTypeAssigning] = useState(false);
+    const [docTypeSuccess, setDocTypeSuccess] = useState(false);
+
     // Form state
     const [formData, setFormData] = useState({
         displayName: "",
@@ -112,6 +123,14 @@ export default function EditFormPage({ params }: PageProps) {
                 setLoading(true);
                 setError(null);
 
+                // Load document types
+                try {
+                    const docTypes = await apiClient.getDocumentTypes({ activeOnly: true });
+                    setDocumentTypes(docTypes);
+                } catch (err) {
+                    console.error("Failed to load document types:", err);
+                }
+
                 const response = await apiClient.getAllTemplates();
                 const foundTemplate = response.templates?.find(
                     (t) => t.id === templateId
@@ -123,6 +142,13 @@ export default function EditFormPage({ params }: PageProps) {
                 }
 
                 setTemplate(foundTemplate);
+
+                // Set document type values if assigned
+                if (foundTemplate.document_type_id) {
+                    setSelectedDocTypeId(foundTemplate.document_type_id);
+                    setVariantName(foundTemplate.variant_name || '');
+                    setVariantOrder(foundTemplate.variant_order || 0);
+                }
 
                 // Populate form with template data
                 setFormData({
@@ -380,6 +406,79 @@ export default function EditFormPage({ params }: PageProps) {
             setError(err instanceof Error ? err.message : "ไม่สามารถอัปโหลดไฟล์ได้");
         } finally {
             setUploadingFiles(false);
+        }
+    };
+
+    // Handle document type assignment
+    const handleAssignDocumentType = async () => {
+        if (!selectedDocTypeId) {
+            setError("กรุณาเลือกประเภทเอกสาร");
+            return;
+        }
+
+        try {
+            setDocTypeAssigning(true);
+            setError(null);
+            setDocTypeSuccess(false);
+
+            await apiClient.assignTemplateToDocumentType(
+                selectedDocTypeId,
+                templateId,
+                variantName,
+                variantOrder
+            );
+
+            // Update template state
+            if (template) {
+                setTemplate({
+                    ...template,
+                    document_type_id: selectedDocTypeId,
+                    variant_name: variantName,
+                    variant_order: variantOrder,
+                });
+            }
+
+            setDocTypeSuccess(true);
+            setTimeout(() => setDocTypeSuccess(false), 3000);
+        } catch (err) {
+            console.error("Failed to assign document type:", err);
+            setError(err instanceof Error ? err.message : "ไม่สามารถกำหนดประเภทเอกสารได้");
+        } finally {
+            setDocTypeAssigning(false);
+        }
+    };
+
+    // Handle document type unassignment
+    const handleUnassignDocumentType = async () => {
+        if (!template?.document_type_id) return;
+
+        try {
+            setDocTypeAssigning(true);
+            setError(null);
+
+            await apiClient.unassignTemplateFromDocumentType(
+                template.document_type_id,
+                templateId
+            );
+
+            // Update template state
+            setTemplate({
+                ...template,
+                document_type_id: '',
+                variant_name: '',
+                variant_order: 0,
+            });
+            setSelectedDocTypeId('');
+            setVariantName('');
+            setVariantOrder(0);
+
+            setDocTypeSuccess(true);
+            setTimeout(() => setDocTypeSuccess(false), 3000);
+        } catch (err) {
+            console.error("Failed to unassign document type:", err);
+            setError(err instanceof Error ? err.message : "ไม่สามารถยกเลิกการกำหนดประเภทเอกสารได้");
+        } finally {
+            setDocTypeAssigning(false);
         }
     };
 
@@ -845,6 +944,191 @@ export default function EditFormPage({ params }: PageProps) {
                                         </label>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Document Type Assignment */}
+                            <div className="bg-background border border-border-default rounded-lg p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <FolderOpen className="w-5 h-5 text-primary" />
+                                    <h2 className="text-h4 text-foreground">ประเภทเอกสาร</h2>
+                                </div>
+                                <p className="text-body-sm text-text-muted mb-4">
+                                    จัดกลุ่มเทมเพลตนี้เข้ากับประเภทเอกสารที่เกี่ยวข้อง
+                                </p>
+
+                                {template?.document_type_id ? (
+                                    // Already assigned - show current assignment
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-3 h-3 rounded-full"
+                                                        style={{
+                                                            backgroundColor: documentTypes.find(dt => dt.id === template.document_type_id)?.color || '#6B7280'
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <p className="font-medium text-foreground">
+                                                            {documentTypes.find(dt => dt.id === template.document_type_id)?.name || 'Unknown'}
+                                                        </p>
+                                                        {template.variant_name && (
+                                                            <p className="text-sm text-text-muted">
+                                                                รูปแบบ: {template.variant_name}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleUnassignDocumentType}
+                                                    disabled={docTypeAssigning}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                                                >
+                                                    {docTypeAssigning ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <Unlink className="w-4 h-4" />
+                                                    )}
+                                                    ยกเลิก
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Update assignment form */}
+                                        <div className="space-y-3 pt-3 border-t border-border-default">
+                                            <p className="text-sm text-text-muted">อัปเดตการกำหนด:</p>
+                                            <div>
+                                                <label className="text-sm font-medium text-foreground mb-1 block">
+                                                    ชื่อรูปแบบ (Variant)
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={variantName}
+                                                    onChange={(e) => setVariantName(e.target.value)}
+                                                    placeholder="เช่น ด้านหน้า, ด้านหลัง, สำเนา"
+                                                    className="w-full px-3 py-2 border border-border-default rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-foreground mb-1 block">
+                                                    ลำดับการแสดง
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={variantOrder}
+                                                    onChange={(e) => setVariantOrder(parseInt(e.target.value) || 0)}
+                                                    min={0}
+                                                    className="w-full px-3 py-2 border border-border-default rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                                />
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={handleAssignDocumentType}
+                                                disabled={docTypeAssigning}
+                                                className="w-full justify-center"
+                                            >
+                                                {docTypeAssigning ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <Save className="w-4 h-4 mr-2" />
+                                                )}
+                                                อัปเดต
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // Not assigned - show assignment form
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-sm font-medium text-foreground mb-1 block">
+                                                เลือกประเภทเอกสาร
+                                            </label>
+                                            <select
+                                                value={selectedDocTypeId}
+                                                onChange={(e) => setSelectedDocTypeId(e.target.value)}
+                                                className="w-full px-3 py-2 border border-border-default rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                            >
+                                                <option value="">-- เลือกประเภทเอกสาร --</option>
+                                                {documentTypes.map((docType) => (
+                                                    <option key={docType.id} value={docType.id}>
+                                                        {docType.name}
+                                                        {docType.name_en ? ` (${docType.name_en})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {selectedDocTypeId && (
+                                            <>
+                                                <div>
+                                                    <label className="text-sm font-medium text-foreground mb-1 block">
+                                                        ชื่อรูปแบบ (Variant)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={variantName}
+                                                        onChange={(e) => setVariantName(e.target.value)}
+                                                        placeholder="เช่น ด้านหน้า, ด้านหลัง, สำเนา"
+                                                        className="w-full px-3 py-2 border border-border-default rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-foreground mb-1 block">
+                                                        ลำดับการแสดง
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={variantOrder}
+                                                        onChange={(e) => setVariantOrder(parseInt(e.target.value) || 0)}
+                                                        min={0}
+                                                        className="w-full px-3 py-2 border border-border-default rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {docTypeSuccess && (
+                                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                                <p className="text-body-sm text-green-700">
+                                                    กำหนดประเภทเอกสารสำเร็จ!
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={handleAssignDocumentType}
+                                            disabled={docTypeAssigning || !selectedDocTypeId}
+                                            className="w-full justify-center"
+                                        >
+                                            {docTypeAssigning ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    กำลังบันทึก...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <LinkIcon className="w-4 h-4 mr-2" />
+                                                    กำหนดประเภทเอกสาร
+                                                </>
+                                            )}
+                                        </Button>
+
+                                        {documentTypes.length === 0 && (
+                                            <p className="text-sm text-text-muted text-center">
+                                                ยังไม่มีประเภทเอกสาร{' '}
+                                                <a href="/settings/document-types" className="text-primary hover:underline">
+                                                    สร้างประเภทเอกสาร
+                                                </a>
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Field Definitions - Section List */}

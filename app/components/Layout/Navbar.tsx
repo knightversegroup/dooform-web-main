@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { ChevronDown, Search, X, Menu as MenuIcon, LogOut, Settings, History, Sliders } from "lucide-react";
+import { ChevronDown, Search, X, Menu as MenuIcon, LogOut, Settings, History, Sliders, BarChart3 } from "lucide-react";
 
 const DEFAULT_PROFILE_IMAGE = "/profile_default.webp";
 import Image from "next/image";
@@ -164,6 +164,17 @@ export default function Navbar() {
                         >
                           <History className="w-4 h-4" />
                           ประวัติเอกสาร
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }: { focus: boolean }) => (
+                        <Link
+                          href="/stats"
+                          className={`flex items-center gap-2 px-4 py-2 text-sm ${focus ? "bg-surface-alt text-foreground" : "text-text-default"}`}
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          สถิติการใช้งาน
                         </Link>
                       )}
                     </MenuItem>
@@ -358,15 +369,26 @@ export default function Navbar() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Button
-                      href="/history"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <History className="w-4 h-4 mr-2" />
-                      ประวัติเอกสาร
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        href="/history"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <History className="w-4 h-4 mr-2" />
+                        ประวัติเอกสาร
+                      </Button>
+                      <Button
+                        href="/stats"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                        สถิติ
+                      </Button>
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         href="/profile"

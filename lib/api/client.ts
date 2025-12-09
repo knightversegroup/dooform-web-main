@@ -27,6 +27,26 @@ import {
   ConfigurableInputType,
   InputTypesResponse,
   InputTypeCreateRequest,
+  StatisticsResponse,
+  StatsSummaryResponse,
+  StatsTemplatesResponse,
+  StatsTrendsResponse,
+  StatsTimeSeriesResponse,
+  TemplateStatistics,
+  DocumentType,
+  DocumentTypesResponse,
+  DocumentTypeCreateRequest,
+  DocumentTypeUpdateRequest,
+  TemplateAssignment,
+  GroupedTemplatesResponse,
+  SuggestedGroup,
+  SuggestionsResponse,
+  FilterCategory,
+  FilterOption,
+  FilterCategoryCreateRequest,
+  FilterCategoryUpdateRequest,
+  FilterOptionCreateRequest,
+  FilterOptionUpdateRequest,
 } from './types';
 
 class ApiClient {
@@ -883,6 +903,453 @@ class ApiClient {
       headers: this.getAuthHeaders(),
     });
     return this.handleResponse<{ message: string }>(response);
+  }
+
+  // =====================
+  // Statistics
+  // =====================
+
+  async getStatistics(): Promise<StatisticsResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/stats`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<StatisticsResponse>(response, makeRequest);
+  }
+
+  async getStatsSummary(): Promise<StatsSummaryResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/stats/summary`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<StatsSummaryResponse>(response, makeRequest);
+  }
+
+  async getStatsTemplates(): Promise<StatsTemplatesResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/stats/templates`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<StatsTemplatesResponse>(response, makeRequest);
+  }
+
+  async getStatsByTemplate(templateId: string): Promise<TemplateStatistics> {
+    const makeRequest = () => fetch(`${this.baseUrl}/stats/templates/${templateId}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<TemplateStatistics>(response, makeRequest);
+  }
+
+  async getStatsTrends(days = 30, templateId?: string): Promise<StatsTrendsResponse> {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (templateId) params.append('template_id', templateId);
+
+    const makeRequest = () => fetch(`${this.baseUrl}/stats/trends?${params.toString()}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<StatsTrendsResponse>(response, makeRequest);
+  }
+
+  async getStatsTimeSeries(eventType: 'form_submit' | 'export' | 'download', days = 30, templateId?: string): Promise<StatsTimeSeriesResponse> {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (templateId) params.append('template_id', templateId);
+
+    const makeRequest = () => fetch(`${this.baseUrl}/stats/trends/${eventType}?${params.toString()}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<StatsTimeSeriesResponse>(response, makeRequest);
+  }
+
+  // =====================
+  // Document Types (Template Grouping)
+  // =====================
+
+  async getDocumentTypes(options?: { category?: string; activeOnly?: boolean; includeTemplates?: boolean }): Promise<DocumentType[]> {
+    const params = new URLSearchParams();
+    if (options?.category) params.append('category', options.category);
+    if (options?.activeOnly !== undefined) params.append('active_only', String(options.activeOnly));
+    if (options?.includeTemplates) params.append('include_templates', 'true');
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.baseUrl}/document-types?${queryString}` : `${this.baseUrl}/document-types`;
+
+    const makeRequest = () => fetch(url, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<DocumentTypesResponse>(response, makeRequest);
+    return result.document_types || [];
+  }
+
+  async getDocumentType(id: string, includeTemplates = false): Promise<DocumentType> {
+    const params = includeTemplates ? '?include_templates=true' : '';
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${id}${params}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ document_type: DocumentType }>(response, makeRequest);
+    return result.document_type;
+  }
+
+  async getDocumentTypeByCode(code: string): Promise<DocumentType> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/code/${code}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ document_type: DocumentType }>(response, makeRequest);
+    return result.document_type;
+  }
+
+  async createDocumentType(data: DocumentTypeCreateRequest): Promise<DocumentType> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ message: string; document_type: DocumentType }>(response, makeRequest);
+    return result.document_type;
+  }
+
+  async updateDocumentType(id: string, data: DocumentTypeUpdateRequest): Promise<DocumentType> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ message: string; document_type: DocumentType }>(response, makeRequest);
+    return result.document_type;
+  }
+
+  async deleteDocumentType(id: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async getDocumentTypeCategories(): Promise<string[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/categories`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ categories: string[] }>(response, makeRequest);
+    return result.categories;
+  }
+
+  async getDocumentTypeTemplates(documentTypeId: string): Promise<Template[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${documentTypeId}/templates`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ templates: Template[] }>(response, makeRequest);
+    return result.templates || [];
+  }
+
+  async assignTemplateToDocumentType(
+    documentTypeId: string,
+    templateId: string,
+    variantName: string,
+    variantOrder: number
+  ): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${documentTypeId}/templates`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({
+        template_id: templateId,
+        variant_name: variantName,
+        variant_order: variantOrder,
+      }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async bulkAssignTemplatesToDocumentType(
+    documentTypeId: string,
+    assignments: TemplateAssignment[]
+  ): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${documentTypeId}/templates/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({ assignments }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async unassignTemplateFromDocumentType(documentTypeId: string, templateId: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/${documentTypeId}/templates/${templateId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async getTemplatesGrouped(): Promise<GroupedTemplatesResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates?grouped=true`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<GroupedTemplatesResponse>(response, makeRequest);
+  }
+
+  async getTemplatesFiltered(options?: {
+    documentTypeId?: string;
+    type?: string;
+    tier?: string;
+    category?: string;
+    search?: string;
+    isVerified?: boolean;
+    includeDocumentType?: boolean;
+  }): Promise<Template[]> {
+    const params = new URLSearchParams();
+    if (options?.documentTypeId) params.append('document_type_id', options.documentTypeId);
+    if (options?.type) params.append('type', options.type);
+    if (options?.tier) params.append('tier', options.tier);
+    if (options?.category) params.append('category', options.category);
+    if (options?.search) params.append('search', options.search);
+    if (options?.isVerified !== undefined) params.append('is_verified', String(options.isVerified));
+    if (options?.includeDocumentType) params.append('include_document_type', 'true');
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.baseUrl}/templates?${queryString}` : `${this.baseUrl}/templates`;
+
+    const makeRequest = () => fetch(url, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ templates: Template[] }>(response, makeRequest);
+    return result.templates || [];
+  }
+
+  // Auto-suggestion Methods (for automatic template grouping)
+
+  async getAutoSuggestions(): Promise<SuggestedGroup[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/suggestions`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<SuggestionsResponse>(response, makeRequest);
+    return result.suggestions || [];
+  }
+
+  async getSuggestionForTemplate(templateId: string): Promise<SuggestedGroup | null> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/suggestions/${templateId}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ suggestion: SuggestedGroup }>(response, makeRequest);
+    return result.suggestion || null;
+  }
+
+  async applySuggestion(suggestion: SuggestedGroup): Promise<DocumentType> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/suggestions/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({
+        suggested_name: suggestion.suggested_name,
+        suggested_code: suggestion.suggested_code,
+        suggested_category: suggestion.suggested_category,
+        existing_type_id: suggestion.existing_type_id,
+        templates: suggestion.templates.map(t => ({
+          id: t.id,
+          suggested_variant: t.suggested_variant,
+          variant_order: t.variant_order,
+        })),
+      }),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ message: string; document_type: DocumentType }>(response, makeRequest);
+    return result.document_type;
+  }
+
+  async autoGroupAllTemplates(): Promise<{ message: string; created_document_types: DocumentType[] }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/document-types/auto-group`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string; created_document_types: DocumentType[] }>(response, makeRequest);
+  }
+
+  // =====================
+  // Filter Management
+  // =====================
+
+  async getFilters(): Promise<FilterCategory[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ filters: FilterCategory[] }>(response, makeRequest);
+    return result.filters || [];
+  }
+
+  async getFilterCategories(activeOnly = false): Promise<FilterCategory[]> {
+    const params = activeOnly ? '?active_only=true' : '';
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories${params}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ categories: FilterCategory[] }>(response, makeRequest);
+    return result.categories || [];
+  }
+
+  async getFilterCategory(id: string): Promise<FilterCategory> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories/${id}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FilterCategory>(response, makeRequest);
+  }
+
+  async createFilterCategory(data: FilterCategoryCreateRequest): Promise<FilterCategory> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FilterCategory>(response, makeRequest);
+  }
+
+  async updateFilterCategory(id: string, data: FilterCategoryUpdateRequest): Promise<FilterCategory> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FilterCategory>(response, makeRequest);
+  }
+
+  async deleteFilterCategory(id: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async getFilterOptions(categoryId: string, activeOnly = false): Promise<FilterOption[]> {
+    const params = activeOnly ? '?active_only=true' : '';
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/categories/${categoryId}/options${params}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ options: FilterOption[] }>(response, makeRequest);
+    return result.options || [];
+  }
+
+  async createFilterOption(data: FilterOptionCreateRequest): Promise<FilterOption> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/options`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FilterOption>(response, makeRequest);
+  }
+
+  async updateFilterOption(id: string, data: FilterOptionUpdateRequest): Promise<FilterOption> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/options/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FilterOption>(response, makeRequest);
+  }
+
+  async deleteFilterOption(id: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/options/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async initializeDefaultFilters(): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/filters/initialize`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
   }
 
   // OCR Methods

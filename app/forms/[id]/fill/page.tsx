@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
     ArrowLeft,
     FileText,
@@ -10,6 +11,13 @@ import {
     CheckCircle,
     AlertCircle,
     Scan,
+    Eye,
+    Send,
+    ChevronRight,
+    Info,
+    Sparkles,
+    Lock,
+    Unlock,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { Template, FieldDefinition } from "@/lib/api/types";
@@ -43,8 +51,23 @@ const parseAliases = (aliasesJson: string): Record<string, string> => {
     }
 };
 
+// Get header background color based on category
+function getHeaderBgColor(category: string): string {
+    const colors: Record<string, string> = {
+        government: "#b91c1c", // red-700
+        legal: "#1d4ed8", // blue-700
+        finance: "#047857", // emerald-700
+        education: "#7c3aed", // violet-600
+        hr: "#c2410c", // orange-700
+        business: "#0f766e", // teal-700
+        identification: "#be185d", // pink-700
+        certificate: "#4338ca", // indigo-700
+        other: "#374151", // gray-700
+    };
+    return colors[category] || "#007398"; // default ScienceDirect blue
+}
 
-// Section color palette for preview highlighting (outside component to avoid dependency issues)
+// Section color palette for preview highlighting
 const SECTION_COLORS = [
     { bg: "#FEF3C7", text: "#92400E" },  // 0: yellow
     { bg: "#DBEAFE", text: "#1E40AF" },  // 1: blue
@@ -72,7 +95,7 @@ export default function FillFormPage({ params }: PageProps) {
     const [success, setSuccess] = useState<{
         documentId: string;
         downloadUrl: string;
-        downloadPdfUrl?: string;  // Only present if PDF was generated successfully
+        downloadPdfUrl?: string;
     } | null>(null);
 
     // Form data state
@@ -93,7 +116,21 @@ export default function FillFormPage({ params }: PageProps) {
     // OCR Scanner state
     const [showOCRScanner, setShowOCRScanner] = useState(false);
 
-    // Redirect to login if not authenticated (use replace to avoid back button loop)
+    // Calculate progress
+    const filledFieldsCount = useMemo(() => {
+        return Object.values(formData).filter((v) => v.trim() !== "").length;
+    }, [formData]);
+
+    const totalFieldsCount = useMemo(() => {
+        return Object.keys(formData).length;
+    }, [formData]);
+
+    const progressPercentage = useMemo(() => {
+        if (totalFieldsCount === 0) return 0;
+        return Math.round((filledFieldsCount / totalFieldsCount) * 100);
+    }, [filledFieldsCount, totalFieldsCount]);
+
+    // Redirect to login if not authenticated
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
             router.replace(`/login?redirect=/forms/${templateId}/fill`);
@@ -118,35 +155,29 @@ export default function FillFormPage({ params }: PageProps) {
 
                 setTemplate(foundTemplate);
 
-                // Initialize form data with empty strings from placeholders
-                const placeholders = parsePlaceholders(
-                    foundTemplate.placeholders
-                );
+                // Initialize form data
+                const placeholders = parsePlaceholders(foundTemplate.placeholders);
                 const initialData: Record<string, string> = {};
                 placeholders.forEach((p) => {
                     const key = p.replace(/\{\{|\}\}/g, '');
                     initialData[key] = "";
                 });
-                // Note: More keys may be added from fieldDefinitions below
                 setFormData(initialData);
 
-                // Fetch field definitions from backend
+                // Fetch field definitions
                 try {
                     const definitions = await apiClient.getFieldDefinitions(templateId);
                     setFieldDefinitions(definitions);
 
-                    // Filter out hidden merged fields (fields that are part of a merge but not the main one)
+                    // Filter out hidden merged fields
                     const visibleDefinitions: Record<string, FieldDefinition> = {};
                     Object.entries(definitions).forEach(([key, def]) => {
-                        // Skip fields that are hidden because they're part of a merged group
                         if (def.group?.startsWith('merged_hidden_')) {
                             return;
                         }
                         visibleDefinitions[key] = def;
                     });
 
-                    // Also initialize formData with keys from field definitions
-                    // This ensures all fields have entries even if not in template placeholders
                     setFormData((prev) => {
                         const updated = { ...prev };
                         Object.keys(visibleDefinitions).forEach((key) => {
@@ -158,23 +189,19 @@ export default function FillFormPage({ params }: PageProps) {
                         return updated;
                     });
 
-                    // Group fields by saved group name (from canvas sections)
                     const sections = groupFieldsBySavedGroup(visibleDefinitions);
                     setGroupedSections(sections);
                 } catch (err) {
                     console.error("Failed to load field definitions:", err);
-                    // If backend doesn't have field definitions, the form will still work
-                    // but without smart input types
                     setFieldDefinitions({});
                     setGroupedSections([]);
                 }
 
-                // Load HTML preview if available
+                // Load HTML preview
                 if (foundTemplate.gcs_path_html) {
                     try {
                         const html = await apiClient.getHTMLPreview(templateId);
                         setHtmlContent(html);
-                        // Remove all {{...}} placeholders initially (show clean document)
                         const initialPreview = html.replace(/\{\{([^}]+)\}\}/g, '');
                         setPreviewHtml(initialPreview);
                         setHasPreview(true);
@@ -185,9 +212,7 @@ export default function FillFormPage({ params }: PageProps) {
                 }
             } catch (err) {
                 console.error("Failed to load template:", err);
-                setError(
-                    err instanceof Error ? err.message : "Failed to load template"
-                );
+                setError(err instanceof Error ? err.message : "Failed to load template");
             } finally {
                 setLoading(false);
             }
@@ -198,7 +223,7 @@ export default function FillFormPage({ params }: PageProps) {
         }
     }, [templateId]);
 
-    // Build field to color map from sections
+    // Build field to color map
     const fieldColorMap = useMemo(() => {
         const map: Record<string, { bg: string; text: string }> = {};
         groupedSections.forEach((section) => {
@@ -211,15 +236,12 @@ export default function FillFormPage({ params }: PageProps) {
         return map;
     }, [groupedSections]);
 
-    // Update preview when form values change or active field changes
+    // Update preview when form values change
     useEffect(() => {
         if (htmlContent && hasPreview) {
             let updatedHtml = htmlContent;
-
-            // First, decode HTML entities for curly braces
             updatedHtml = updatedHtml.replace(/&#123;/g, '{').replace(/&#125;/g, '}');
 
-            // Handle merged fields and regular fields - split their values into individual placeholders
             Object.keys(formData).forEach((key) => {
                 const definition = fieldDefinitions[key];
                 const value = formData[key] || "";
@@ -227,14 +249,12 @@ export default function FillFormPage({ params }: PageProps) {
                 const sectionColor = fieldColorMap[key] || { bg: "#F3F4F6", text: "#374151" };
 
                 if (definition?.isMerged && definition.mergedFields) {
-                    // Split merged value into individual field values
                     const splitValues = splitMergedValue(
                         value,
                         definition.mergedFields,
                         definition.separator || ''
                     );
 
-                    // Replace each individual placeholder
                     definition.mergedFields.forEach((fieldKey) => {
                         const fieldValue = splitValues[fieldKey] || "";
                         const placeholder = `{{${fieldKey}}}`;
@@ -252,13 +272,11 @@ export default function FillFormPage({ params }: PageProps) {
                             if (isActive) {
                                 updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${fieldColor.bg}; color: ${fieldColor.text}; padding: 2px 6px; border-radius: 4px; opacity: 0.7;">___</mark>`);
                             } else {
-                                // Hide placeholder when empty
                                 updatedHtml = updatedHtml.replace(regex, "");
                             }
                         }
                     });
                 } else {
-                    // Regular field - replace single placeholder
                     const placeholder = `{{${key}}}`;
                     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                     const regex = new RegExp(escapedPlaceholder, "gi");
@@ -273,24 +291,19 @@ export default function FillFormPage({ params }: PageProps) {
                         if (isActive) {
                             updatedHtml = updatedHtml.replace(regex, `<mark style="background-color: ${sectionColor.bg}; color: ${sectionColor.text}; padding: 2px 6px; border-radius: 4px; opacity: 0.7;">___</mark>`);
                         } else {
-                            // Hide placeholder when empty
                             updatedHtml = updatedHtml.replace(regex, "");
                         }
                     }
                 }
             });
 
-            // Also handle any remaining {{...}} placeholders that weren't in formData
-            // This catches placeholders that exist in HTML but weren't in the template's placeholders array
             updatedHtml = updatedHtml.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                // Check if we have a value for this key in formData (case-insensitive)
                 const formDataKey = Object.keys(formData).find(
                     k => k.toLowerCase() === key.toLowerCase()
                 );
                 if (formDataKey && formData[formDataKey]) {
                     return formData[formDataKey];
                 }
-                // If no value, remove the placeholder
                 return '';
             });
 
@@ -305,7 +318,6 @@ export default function FillFormPage({ params }: PageProps) {
         }));
     };
 
-    // Handle OCR data extraction - apply mapped fields to form
     const handleOCRDataExtracted = (mappedFields: Record<string, string>) => {
         setFormData((prev) => ({
             ...prev,
@@ -314,19 +326,15 @@ export default function FillFormPage({ params }: PageProps) {
         setShowOCRScanner(false);
     };
 
-    // Handle address selection - auto-fill related province/district/subdistrict fields
     const handleAddressSelect = (fieldKey: string, address: AddressSelection) => {
         const updates: Record<string, string> = {};
 
-        // Find related fields by dataType and try to auto-fill them
         Object.entries(fieldDefinitions).forEach(([placeholder, def]) => {
             const key = placeholder.replace(/\{\{|\}\}/g, '');
             const lowerPlaceholder = placeholder.toLowerCase();
 
-            // Skip the current field and fields that already have values
             if (key === fieldKey) return;
 
-            // Match province fields
             if (def.dataType === 'province' ||
                 lowerPlaceholder.includes('province') ||
                 lowerPlaceholder.includes('จังหวัด')) {
@@ -334,7 +342,6 @@ export default function FillFormPage({ params }: PageProps) {
                     updates[key] = address.province;
                 }
             }
-            // Match district fields (อำเภอ)
             else if (lowerPlaceholder.includes('district') ||
                      lowerPlaceholder.includes('amphoe') ||
                      lowerPlaceholder.includes('อำเภอ') ||
@@ -343,7 +350,6 @@ export default function FillFormPage({ params }: PageProps) {
                     updates[key] = address.district;
                 }
             }
-            // Match sub-district fields (ตำบล)
             else if (lowerPlaceholder.includes('subdistrict') ||
                      lowerPlaceholder.includes('tambon') ||
                      lowerPlaceholder.includes('ตำบล') ||
@@ -354,7 +360,6 @@ export default function FillFormPage({ params }: PageProps) {
             }
         });
 
-        // Apply all updates at once
         if (Object.keys(updates).length > 0) {
             setFormData((prev) => ({
                 ...prev,
@@ -371,36 +376,27 @@ export default function FillFormPage({ params }: PageProps) {
         try {
             setProcessing(true);
 
-            // Convert keys back to placeholder format for API
-            // Also handle merged fields - split them back into individual values
             const apiFormData: Record<string, string> = {};
 
             Object.keys(formData).forEach((key) => {
                 const definition = fieldDefinitions[key];
 
-                // Check if this is a merged field
                 if (definition?.isMerged && definition.mergedFields) {
-                    // Split the merged value into individual field values
                     const splitValues = splitMergedValue(
                         formData[key],
                         definition.mergedFields,
                         definition.separator || ''
                     );
 
-                    // Add each split value with its placeholder format
                     Object.entries(splitValues).forEach(([fieldKey, fieldValue]) => {
                         apiFormData[`{{${fieldKey}}}`] = fieldValue;
                     });
                 } else {
-                    // Regular field - just add with placeholder format
                     apiFormData[`{{${key}}}`] = formData[key];
                 }
             });
 
-            const response = await apiClient.processDocument(
-                templateId,
-                apiFormData
-            );
+            const response = await apiClient.processDocument(templateId, apiFormData);
 
             setSuccess({
                 documentId: response.document_id,
@@ -409,11 +405,7 @@ export default function FillFormPage({ params }: PageProps) {
             });
         } catch (err) {
             console.error("Failed to process document:", err);
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Failed to process document"
-            );
+            setError(err instanceof Error ? err.message : "Failed to process document");
         } finally {
             setProcessing(false);
         }
@@ -423,10 +415,7 @@ export default function FillFormPage({ params }: PageProps) {
         if (!success) return;
 
         try {
-            const blob = await apiClient.downloadDocument(
-                success.documentId,
-                format
-            );
+            const blob = await apiClient.downloadDocument(success.documentId, format);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -437,33 +426,20 @@ export default function FillFormPage({ params }: PageProps) {
             URL.revokeObjectURL(url);
         } catch (err) {
             console.error("Failed to download:", err);
-            setError(
-                err instanceof Error ? err.message : "Failed to download"
-            );
+            setError(err instanceof Error ? err.message : "Failed to download");
         }
     };
 
-    // Show loading while checking auth
-    if (authLoading) {
-        return (
-            <div className="min-h-screen bg-background">
-                <div className="container-main section-padding">
-                    <div className="flex items-center justify-center py-24">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    const placeholders = template ? parsePlaceholders(template.placeholders) : [];
+    const aliases = template ? parseAliases(template.aliases) : {};
+    const headerBgColor = getHeaderBgColor(template?.category || template?.document_type?.category || "other");
 
-    // Don't render anything if not authenticated (will redirect)
-    if (!isAuthenticated) {
+    // Loading states
+    if (authLoading || (!isAuthenticated && !authLoading)) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="container-main section-padding">
-                    <div className="flex items-center justify-center py-24">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    </div>
+            <div className="min-h-screen bg-gray-50">
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="w-8 h-8 text-[#007398] animate-spin" />
                 </div>
             </div>
         );
@@ -471,11 +447,9 @@ export default function FillFormPage({ params }: PageProps) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="container-main section-padding">
-                    <div className="flex items-center justify-center py-24">
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    </div>
+            <div className="min-h-screen bg-gray-50">
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="w-8 h-8 text-[#007398] animate-spin" />
                 </div>
             </div>
         );
@@ -483,167 +457,282 @@ export default function FillFormPage({ params }: PageProps) {
 
     if (error && !template) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="container-main section-padding">
-                    <div className="text-center py-24">
-                        <h1 className="text-h2 text-foreground mb-4">
-                            {error || "ไม่พบเทมเพลต"}
-                        </h1>
-                        <Button href="/forms" variant="secondary">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            กลับไปหน้ารายการ
-                        </Button>
-                    </div>
+            <div className="min-h-screen bg-gray-50">
+                <div className="max-w-4xl mx-auto px-4 py-24 text-center">
+                    <h1 className="text-2xl font-light text-gray-900 mb-4">
+                        {error || "ไม่พบเทมเพลต"}
+                    </h1>
+                    <Link
+                        href="/forms"
+                        className="inline-flex items-center text-[#007398] hover:underline"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        กลับไปหน้ารายการ
+                    </Link>
                 </div>
             </div>
         );
     }
 
-    const placeholders = template
-        ? parsePlaceholders(template.placeholders)
-        : [];
-    const aliases = template ? parseAliases(template.aliases) : {};
-
     return (
-        <div className="min-h-screen bg-background">
-            <div className="container-main section-padding">
-                {/* Back button */}
-                <div className="mb-6">
-                    <Button
+        <div className="min-h-screen bg-gray-50 font-sans">
+            {/* Top bar */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                    <Link
                         href={`/forms/${templateId}`}
-                        variant="secondary"
-                        size="sm"
+                        className="text-sm text-gray-600 hover:text-[#007398]"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        กลับ
-                    </Button>
+                        ← กลับไปหน้ารายละเอียด
+                    </Link>
                 </div>
+            </div>
 
-                <div className={hasPreview ? "flex gap-6" : ""}>
-                    {/* Left Column: Form */}
-                    <div className={hasPreview ? "w-[380px] flex-shrink-0" : "max-w-2xl mx-auto w-full"}>
-                        {/* Header */}
-                        <div className="bg-background border border-border-default rounded-lg p-4 mb-4">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <FileText className="w-5 h-5 text-primary" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h1 className="text-h4 text-foreground">
-                                        กรอกแบบฟอร์ม
-                                    </h1>
-                                    <p className="text-caption text-text-muted truncate">
-                                        {template?.display_name ||
-                                            template?.name ||
-                                            template?.filename}
-                                    </p>
-                                </div>
+            {/* Header Banner */}
+            <div
+                className="relative"
+                style={{ backgroundColor: headerBgColor }}
+            >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="flex items-center gap-4">
+                        {/* Template Icon */}
+                        <div className="flex-shrink-0 hidden sm:block">
+                            <div className="w-16 h-20 bg-white rounded shadow flex items-center justify-center border-2 border-white">
+                                <FileText className="w-8 h-8 text-gray-400" />
                             </div>
-                            <Button
-                                onClick={() => setShowOCRScanner(!showOCRScanner)}
-                                variant={showOCRScanner ? "primary" : "secondary"}
-                                size="sm"
-                                className="w-full justify-center"
-                            >
-                                <Scan className="w-4 h-4 mr-2" />
-                                สแกนเอกสาร
-                            </Button>
                         </div>
 
-                        {/* OCR Scanner */}
-                        {showOCRScanner && (
-                            <div className="mb-6">
-                                <OCRScanner
-                                    templateId={templateId}
-                                    onDataExtracted={handleOCRDataExtracted}
-                                    onClose={() => setShowOCRScanner(false)}
-                                />
+                        {/* Template Info */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-white/70 text-sm">กรอกแบบฟอร์ม</span>
+                                <ChevronRight className="w-4 h-4 text-white/50" />
                             </div>
-                        )}
+                            <h1 className="text-xl md:text-2xl font-light text-white leading-tight">
+                                {template?.display_name || template?.name || template?.filename}
+                            </h1>
 
-                        {/* Success State */}
-                        {success && (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <CheckCircle className="w-6 h-6 text-green-600" />
-                                    <h2 className="text-h4 text-green-800">
-                                        สร้างเอกสารสำเร็จ!
-                                    </h2>
+                            {/* Tags */}
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                {template?.is_ai_available && (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
+                                        <Sparkles className="w-3 h-3" />
+                                        AI
+                                    </span>
+                                )}
+                                {template?.tier === "free" ? (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
+                                        <Unlock className="w-3 h-3" />
+                                        Free
+                                    </span>
+                                ) : template?.tier && (
+                                    <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
+                                        <Lock className="w-3 h-3" />
+                                        {template.tier}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Progress Stats */}
+                        <div className="hidden lg:flex items-center gap-6 text-white">
+                            <div className="text-center">
+                                <div className="text-2xl font-light">
+                                    {filledFieldsCount}/{totalFieldsCount}
                                 </div>
-                                <p className="text-body-sm text-green-700 mb-4">
-                                    เอกสารของคุณพร้อมให้ดาวน์โหลดแล้ว
+                                <div className="text-xs text-white/70">ช่องที่กรอก</div>
+                            </div>
+                            <div className="w-px h-10 bg-white/30" />
+                            <div className="text-center">
+                                <div className="text-2xl font-light">
+                                    {progressPercentage}%
+                                </div>
+                                <div className="text-xs text-white/70">ความคืบหน้า</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-4">
+                        <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-white transition-all duration-300 ease-out"
+                                style={{ width: `${progressPercentage}%` }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sticky Action Bar */}
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-14">
+                        {/* Left - Tools */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowOCRScanner(!showOCRScanner)}
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                                    showOCRScanner
+                                        ? "bg-[#007398] text-white"
+                                        : "text-gray-600 hover:bg-gray-100"
+                                }`}
+                            >
+                                <Scan className="w-4 h-4" />
+                                สแกนเอกสาร
+                            </button>
+                            {template?.gcs_path_html && (
+                                <Link
+                                    href={`/forms/${templateId}/preview`}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                    ดูตัวอย่างเทมเพลต
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Right - Submit */}
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-500 hidden sm:block">
+                                {filledFieldsCount} จาก {totalFieldsCount} ช่อง
+                            </span>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={processing || success !== null}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {processing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        กำลังสร้าง...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-4 h-4" />
+                                        สร้างเอกสาร
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                {/* OCR Scanner */}
+                {showOCRScanner && (
+                    <div className="mb-6">
+                        <OCRScanner
+                            templateId={templateId}
+                            onDataExtracted={handleOCRDataExtracted}
+                            onClose={() => setShowOCRScanner(false)}
+                        />
+                    </div>
+                )}
+
+                {/* Success State */}
+                {success && (
+                    <div className="bg-white border border-green-200 rounded-lg p-6 mb-6 shadow-sm">
+                        <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <CheckCircle className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h2 className="text-lg font-medium text-gray-900 mb-1">
+                                    สร้างเอกสารสำเร็จ!
+                                </h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    เอกสารของคุณพร้อมให้ดาวน์โหลดแล้ว เลือกรูปแบบที่ต้องการด้านล่าง
                                 </p>
                                 <div className="flex flex-wrap gap-3">
-                                    <Button
+                                    <button
                                         onClick={() => handleDownload("docx")}
-                                        variant="primary"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
                                     >
-                                        <Download className="w-4 h-4 mr-2" />
+                                        <Download className="w-4 h-4" />
                                         ดาวน์โหลด DOCX
-                                    </Button>
+                                    </button>
                                     {success.downloadPdfUrl && (
-                                        <Button
+                                        <button
                                             onClick={() => handleDownload("pdf")}
-                                            variant="secondary"
+                                            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
                                         >
-                                            <Download className="w-4 h-4 mr-2" />
+                                            <Download className="w-4 h-4" />
                                             ดาวน์โหลด PDF
-                                        </Button>
+                                        </button>
                                     )}
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-green-200">
-                                    <Button
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <button
                                         onClick={() => {
                                             setSuccess(null);
-                                            // Reset form
-                                            const initialData: Record<
-                                                string,
-                                                string
-                                            > = {};
+                                            const initialData: Record<string, string> = {};
                                             placeholders.forEach((p) => {
                                                 const key = p.replace(/\{\{|\}\}/g, '');
                                                 initialData[key] = "";
                                             });
                                             setFormData(initialData);
                                         }}
-                                        variant="secondary"
-                                        size="sm"
+                                        className="text-sm text-[#007398] hover:underline"
                                     >
-                                        สร้างเอกสารใหม่
-                                    </Button>
+                                        สร้างเอกสารใหม่ →
+                                    </button>
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    </div>
+                )}
 
-                        {/* Error State */}
-                        {error && template && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                                <div className="flex items-center gap-3">
-                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                                    <p className="text-body-sm text-red-700">
-                                        {error}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                {/* Error State */}
+                {error && template && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                            <p className="text-sm text-red-700">{error}</p>
+                        </div>
+                    </div>
+                )}
 
-                        {/* Form */}
-                        {!success && (
+                {/* Form Layout */}
+                {!success && (
+                    <div className={hasPreview ? "flex gap-6" : ""}>
+                        {/* Left Column: Form */}
+                        <div className={hasPreview ? "w-[420px] flex-shrink-0" : "max-w-2xl mx-auto w-full"}>
                             <form onSubmit={handleSubmit}>
                                 {groupedSections.length > 0 ? (
                                     <div className="space-y-4">
-                                        {/* Render fields grouped by saved sections */}
-                                        {groupedSections.map((section) => (
+                                        {groupedSections.map((section, sectionIdx) => (
                                             <div
                                                 key={section.name}
-                                                className="bg-background border border-border-default rounded-lg p-4"
+                                                className="bg-white border border-gray-200 rounded-lg overflow-hidden"
                                             >
-                                                <h2 className="text-body font-semibold text-foreground mb-4 flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-primary" />
-                                                    {section.name} ({section.fields.length})
-                                                </h2>
+                                                {/* Section Header */}
+                                                <div
+                                                    className="px-4 py-3 border-b border-gray-100"
+                                                    style={{
+                                                        backgroundColor: SECTION_COLORS[section.colorIndex % SECTION_COLORS.length].bg + '20',
+                                                        borderLeftWidth: '4px',
+                                                        borderLeftColor: SECTION_COLORS[section.colorIndex % SECTION_COLORS.length].text,
+                                                    }}
+                                                >
+                                                    <h2 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                                        <span
+                                                            className="w-5 h-5 rounded flex items-center justify-center text-xs text-white"
+                                                            style={{ backgroundColor: SECTION_COLORS[section.colorIndex % SECTION_COLORS.length].text }}
+                                                        >
+                                                            {sectionIdx + 1}
+                                                        </span>
+                                                        {section.name}
+                                                        <span className="text-gray-400 font-normal">
+                                                            ({section.fields.length} ช่อง)
+                                                        </span>
+                                                    </h2>
+                                                </div>
 
-                                                <div className="space-y-3">
+                                                {/* Section Fields */}
+                                                <div className="p-4 space-y-3">
                                                     {section.fields.map((definition) => {
                                                         const key = definition.placeholder.replace(/\{\{|\}\}/g, '');
                                                         return (
@@ -665,63 +754,77 @@ export default function FillFormPage({ params }: PageProps) {
                                             </div>
                                         ))}
 
-                                        {/* Submit Button */}
-                                        <div className="bg-background border border-border-default rounded-lg p-4">
-                                            <Button
+                                        {/* Mobile Submit Button */}
+                                        <div className="lg:hidden bg-white border border-gray-200 rounded-lg p-4">
+                                            <button
                                                 type="submit"
-                                                variant="primary"
-                                                className="w-full justify-center"
                                                 disabled={processing}
+                                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#007398] text-white font-medium rounded hover:bg-[#005f7a] transition-colors disabled:opacity-50"
                                             >
                                                 {processing ? (
                                                     <>
-                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
                                                         กำลังสร้างเอกสาร...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <FileText className="w-4 h-4 mr-2" />
+                                                        <Send className="w-5 h-5" />
                                                         สร้างเอกสาร
                                                     </>
                                                 )}
-                                            </Button>
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-background border border-border-default rounded-lg p-6">
-                                        <p className="text-body-sm text-text-muted text-center py-8">
+                                    <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                                        <Info className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-sm text-gray-500">
                                             ไม่พบช่องกรอกข้อมูลในเทมเพลตนี้
                                         </p>
                                     </div>
                                 )}
                             </form>
-                        )}
 
-                        {/* Instructions - hide when preview is shown to save space */}
-                        {!hasPreview && (
-                            <div className="bg-surface-alt border border-border-default rounded-lg p-4 mt-4">
-                                <h4 className="text-body-sm font-semibold text-foreground mb-2">วิธีใช้งาน</h4>
-                                <ul className="text-caption text-text-muted space-y-1">
-                                    <li>1. กรอกข้อมูลในแต่ละช่องตามที่ต้องการ</li>
-                                    <li>2. ดูตัวอย่างเอกสารแบบ Real-time ทางด้านขวา (ถ้ามี)</li>
-                                    <li>3. กดปุ่ม &quot;สร้างเอกสาร&quot; เพื่อสร้างไฟล์</li>
-                                    <li>4. ดาวน์โหลดเอกสารในรูปแบบ DOCX หรือ PDF</li>
-                                </ul>
+                            {/* Instructions */}
+                            {!hasPreview && groupedSections.length > 0 && (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
+                                    <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                                        <Info className="w-4 h-4 text-gray-400" />
+                                        วิธีใช้งาน
+                                    </h4>
+                                    <ul className="text-xs text-gray-600 space-y-1">
+                                        <li>1. กรอกข้อมูลในแต่ละช่องตามที่ต้องการ</li>
+                                        <li>2. สามารถใช้ &quot;สแกนเอกสาร&quot; เพื่อกรอกข้อมูลอัตโนมัติ</li>
+                                        <li>3. กดปุ่ม &quot;สร้างเอกสาร&quot; เพื่อสร้างไฟล์</li>
+                                        <li>4. ดาวน์โหลดเอกสารในรูปแบบ DOCX หรือ PDF</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Column: Live Preview */}
+                        {hasPreview && (
+                            <div className="flex-1 min-w-0">
+                                <div className="sticky top-20">
+                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                                            <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                                <Eye className="w-4 h-4 text-gray-400" />
+                                                ตัวอย่างเอกสาร (Live)
+                                            </h3>
+                                        </div>
+                                        <div className="h-[calc(100vh-12rem)] overflow-auto">
+                                            <DocumentPreview
+                                                htmlContent={previewHtml}
+                                                showHeader={false}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Right Column: Live Preview */}
-                    {hasPreview && (
-                        <div className="flex-1 min-w-0 sticky top-24 h-[calc(100vh-8rem)]">
-                            <DocumentPreview
-                                htmlContent={previewHtml}
-                                title="ตัวอย่างเอกสาร (Live)"
-                                showHeader={true}
-                            />
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
         </div>
     );

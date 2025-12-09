@@ -85,6 +85,103 @@ export interface FieldDefinitionsResponse {
   field_definitions: Record<string, FieldDefinition>;
 }
 
+// Document Type Categories (for grouping related templates)
+export type DocumentTypeCategory =
+  | 'identification'
+  | 'certificate'
+  | 'contract'
+  | 'application'
+  | 'financial'
+  | 'government'
+  | 'education'
+  | 'medical'
+  | 'other';
+
+// Document Type (groups related templates together, e.g., "บัตรประชาชน" has 3 templates)
+export interface DocumentType {
+  id: string;
+  code: string;           // Unique code (e.g., "thai_id_card")
+  name: string;           // Thai name (e.g., "บัตรประชาชน")
+  name_en: string;        // English name (e.g., "Thai ID Card")
+  description: string;
+  category: DocumentTypeCategory;
+  icon: string;           // Icon name for UI
+  color: string;          // Color code (e.g., "#FF5733")
+  sort_order: number;
+  is_active: boolean;
+  metadata: string;       // JSON for additional data
+  created_at: string;
+  updated_at: string;
+  templates?: Template[]; // Templates belonging to this document type
+}
+
+export interface DocumentTypesResponse {
+  document_types: DocumentType[];
+}
+
+export interface DocumentTypeCreateRequest {
+  code: string;
+  name: string;
+  name_en?: string;
+  description?: string;
+  category?: DocumentTypeCategory;
+  icon?: string;
+  color?: string;
+  sort_order?: number;
+  metadata?: string;
+}
+
+export interface DocumentTypeUpdateRequest {
+  code?: string;
+  name?: string;
+  name_en?: string;
+  description?: string;
+  category?: DocumentTypeCategory;
+  icon?: string;
+  color?: string;
+  sort_order?: number;
+  is_active?: boolean;
+  metadata?: string;
+}
+
+export interface TemplateAssignment {
+  template_id: string;
+  variant_name: string;
+  variant_order: number;
+}
+
+export interface BulkAssignTemplatesRequest {
+  assignments: TemplateAssignment[];
+}
+
+export interface GroupedTemplatesResponse {
+  document_types: DocumentType[];
+  orphan_templates: Template[];
+}
+
+// Auto-suggestion types for template grouping
+export interface SuggestedTemplate {
+  id: string;
+  display_name: string;
+  filename: string;
+  suggested_variant: string;
+  variant_order: number;
+}
+
+export interface SuggestedGroup {
+  suggested_name: string;
+  suggested_code: string;
+  suggested_category: string;
+  templates: SuggestedTemplate[];
+  confidence: number;
+  existing_type_id: string;
+  existing_type_name: string;
+}
+
+export interface SuggestionsResponse {
+  suggestions: SuggestedGroup[];
+}
+
 // Template Types
 export interface Template {
   id: string;
@@ -113,6 +210,12 @@ export interface Template {
   type: TemplateType;
   tier: Tier;
   group: string;
+
+  // Document Type grouping
+  document_type_id: string;
+  variant_name: string;      // Name of variant (e.g., "ด้านหน้า", "ด้านหลัง")
+  variant_order: number;     // Display order within document type
+  document_type?: DocumentType; // Populated when include_document_type=true
 }
 
 // Document Types
@@ -357,4 +460,125 @@ export interface InputTypeCreateRequest {
   description?: string;
   priority?: number;
   is_active?: boolean;
+}
+
+// Statistics Types
+export interface StatisticsSummary {
+  total_form_submits: number;
+  total_exports: number;
+  total_downloads: number;
+}
+
+export interface TemplateStatistics {
+  template_id: string;
+  template_name: string;
+  form_submits: number;
+  exports: number;
+  downloads: number;
+}
+
+export interface TimeSeriesPoint {
+  date: string;
+  count: number;
+}
+
+export interface TimeSeriesData {
+  event_type: string;
+  data_points: TimeSeriesPoint[];
+  total: number;
+}
+
+export interface StatisticsResponse {
+  summary: StatisticsSummary;
+  templates: TemplateStatistics[];
+  trends: Record<string, TimeSeriesData>;
+}
+
+export interface StatsSummaryResponse {
+  summary: StatisticsSummary;
+}
+
+export interface StatsTemplatesResponse {
+  templates: TemplateStatistics[];
+}
+
+export interface StatsTrendsResponse {
+  days: number;
+  trends: Record<string, TimeSeriesData>;
+}
+
+export interface StatsTimeSeriesResponse {
+  days: number;
+  data: TimeSeriesData;
+}
+
+// Filter Types
+export interface FilterOption {
+  id: string;
+  filter_category_id: string;
+  value: string;
+  label: string;
+  label_en?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  count?: number; // Only present in GetFiltersWithCounts response
+}
+
+export interface FilterCategory {
+  id: string;
+  code: string;
+  name: string;
+  name_en?: string;
+  description?: string;
+  field_name: string;
+  sort_order: number;
+  is_active: boolean;
+  is_system: boolean;
+  options?: FilterOption[];
+}
+
+export interface FilterCategoryCreateRequest {
+  code: string;
+  name: string;
+  name_en?: string;
+  description?: string;
+  field_name: string;
+  sort_order?: number;
+}
+
+export interface FilterCategoryUpdateRequest {
+  name?: string;
+  name_en?: string;
+  description?: string;
+  field_name?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface FilterOptionCreateRequest {
+  filter_category_id: string;
+  value: string;
+  label: string;
+  label_en?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sort_order?: number;
+  is_default?: boolean;
+}
+
+export interface FilterOptionUpdateRequest {
+  value?: string;
+  label?: string;
+  label_en?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sort_order?: number;
+  is_active?: boolean;
+  is_default?: boolean;
 }
