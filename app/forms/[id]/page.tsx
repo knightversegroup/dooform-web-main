@@ -202,13 +202,6 @@ export default function TemplateDetailPage({ params }: PageProps) {
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="flex items-start gap-6">
-                        {/* Template Preview/Icon */}
-                        <div className="flex-shrink-0 hidden sm:block">
-                            <div className="w-32 h-40 bg-white rounded shadow-lg flex items-center justify-center border-4 border-white">
-                                <FileText className="w-16 h-16 text-gray-400" />
-                            </div>
-                        </div>
-
                         {/* Template Info */}
                         <div className="flex-1 min-w-0">
                             <h1 className="text-2xl md:text-3xl font-light text-white leading-tight mb-2">

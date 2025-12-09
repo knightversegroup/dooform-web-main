@@ -495,13 +495,6 @@ export default function FillFormPage({ params }: PageProps) {
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        {/* Template Icon */}
-                        <div className="flex-shrink-0 hidden sm:block">
-                            <div className="w-16 h-20 bg-white rounded shadow flex items-center justify-center border-2 border-white">
-                                <FileText className="w-8 h-8 text-gray-400" />
-                            </div>
-                        </div>
-
                         {/* Template Info */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
