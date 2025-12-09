@@ -3,10 +3,12 @@ import { NextRequest } from "next/server";
 
 export const runtime = "edge";
 
-// Load IBM Plex Sans Thai Semibold font (weight 600)
-async function loadFont(origin: string) {
+// Load IBM Plex Sans Thai SemiBold (600) font from Google Fonts CDN
+async function loadFont() {
+  // Google Fonts CDN URL for IBM Plex Sans Thai SemiBold
   const response = await fetch(
-    `${origin}/fonts/IBMPlexSansThai-SemiBold.ttf`
+    "https://fonts.gstatic.com/s/ibmplexsansthai/v10/m8JPje1VVIzcq1HzJq80BlVMdaPnEM9hxIdyw22m.woff2",
+    { cache: "force-cache" }
   );
   if (!response.ok) {
     throw new Error(`Failed to load font: ${response.status}`);
@@ -60,14 +62,37 @@ const DooformLogo = () => (
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
 
-  // Get title parameter - this is the dynamic text below the logo
+  // Get title parameter - searchParams.get() automatically decodes URL encoding
   const title = searchParams.get("title") || "แปลเอกสารราชการไทย-อังกฤษออนไลน์";
 
   // Construct background image URL
   const backgroundUrl = `${origin}/openg-bg.png`;
 
-  // Load font
-  const fontData = await loadFont(origin);
+  // Try to load font, with fallback
+  let fontData: ArrayBuffer | null = null;
+  try {
+    fontData = await loadFont();
+  } catch (error) {
+    console.error("Failed to load font:", error);
+    // Continue without custom font - will use fallback
+  }
+
+  const imageOptions: ConstructorParameters<typeof ImageResponse>[1] = {
+    width: 1200,
+    height: 630,
+  };
+
+  // Only add fonts if we successfully loaded the font
+  if (fontData) {
+    imageOptions.fonts = [
+      {
+        name: "IBM Plex Sans Thai",
+        data: fontData,
+        style: "normal",
+        weight: 600,
+      },
+    ];
+  }
 
   return new ImageResponse(
     (
@@ -80,7 +105,7 @@ export async function GET(request: NextRequest) {
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
-          fontFamily: "IBM Plex Sans Thai",
+          fontFamily: fontData ? "IBM Plex Sans Thai" : "sans-serif",
         }}
       >
         {/* Background image */}
@@ -128,17 +153,6 @@ export async function GET(request: NextRequest) {
         </div>
       </div>
     ),
-    {
-      width: 1200,
-      height: 630,
-      fonts: [
-        {
-          name: "IBM Plex Sans Thai",
-          data: fontData,
-          style: "normal",
-          weight: 600,
-        },
-      ],
-    }
+    imageOptions
   );
 }

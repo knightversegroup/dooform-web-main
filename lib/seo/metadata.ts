@@ -20,7 +20,7 @@ export function generatePageMetadata({
   noIndex = false,
 }: PageMetadataOptions): Metadata {
   const url = `${baseUrl}${path}`;
-  // OG image only needs title - uses openg.webp background + logo-w.svg
+  // OG image only needs title - searchParams.set handles encoding automatically
   const ogImageUrl = new URL("/api/og", baseUrl);
   ogImageUrl.searchParams.set("title", title);
 

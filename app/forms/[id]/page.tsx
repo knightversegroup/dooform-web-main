@@ -39,7 +39,7 @@ export async function generateMetadata({
     template.description ||
     `แปลและกรอก${templateName}ไทย-อังกฤษออนไลน์ จัดรูปแบบอัตโนมัติ ยื่นสถานทูตได้ทันที`;
 
-  // Generate OG image URL with title
+  // Generate OG image URL with title - searchParams.set handles encoding
   const ogImageUrl = new URL("/api/og", baseUrl);
   ogImageUrl.searchParams.set("title", title);
 
