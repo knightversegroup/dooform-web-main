@@ -1,10 +1,14 @@
 "use client";
 
-import { forwardRef, useState } from "react";
-import { FieldDefinition } from "@/lib/api/types";
+import { forwardRef, useState, useRef, useEffect } from "react";
+import { FieldDefinition, DateFormat } from "@/lib/api/types";
 import {
     validateField,
     DATA_TYPE_LABELS,
+    DATE_FORMAT_OPTIONS,
+    formatDateToDisplay,
+    parseDateToISO,
+    getDatePlaceholder,
 } from "@/lib/utils/fieldTypes";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { AddressSelection } from "@/lib/api/addressService";
@@ -26,6 +30,9 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
     ({ definition, value, onChange, onFocus, onBlur, onAddressSelect, alias, disabled, showPlaceholderKey = true, compact = false }, ref) => {
         const [touched, setTouched] = useState(false);
         const [error, setError] = useState<string | null>(null);
+        const [dateFormat, setDateFormat] = useState<DateFormat>(definition.dateFormat || 'dd/mm/yyyy');
+        const [showDatePicker, setShowDatePicker] = useState(false);
+        const datePickerRef = useRef<HTMLInputElement>(null);
 
         const label = alias || definition.placeholder.replace(/\{\{|\}\}/g, '');
         const placeholder = `กรอก ${label}`;
@@ -94,19 +101,53 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                 );
             }
 
-            // Date input
+            // Date input with format selector
             if (inputType === 'date') {
+                const displayValue = formatDateToDisplay(value, dateFormat);
+
                 return (
-                    <input
-                        ref={ref as React.Ref<HTMLInputElement>}
-                        type="date"
-                        value={value}
-                        onChange={(e) => handleChange(e.target.value)}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        disabled={disabled}
-                        className={baseInputClass}
-                    />
+                    <div className="flex gap-2 items-center">
+                        {/* Date display/input with calendar picker */}
+                        <div className="relative flex-1">
+                            <input
+                                ref={ref as React.Ref<HTMLInputElement>}
+                                type="text"
+                                value={displayValue}
+                                onChange={(e) => {
+                                    const isoValue = parseDateToISO(e.target.value, dateFormat);
+                                    handleChange(isoValue);
+                                }}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                disabled={disabled}
+                                placeholder={getDatePlaceholder(dateFormat)}
+                                className={baseInputClass}
+                            />
+                            {/* Hidden date picker for calendar selection */}
+                            <input
+                                ref={datePickerRef}
+                                type="date"
+                                value={value}
+                                onChange={(e) => handleChange(e.target.value)}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                disabled={disabled}
+                            />
+                        </div>
+
+                        {/* Format selector dropdown */}
+                        <select
+                            value={dateFormat}
+                            onChange={(e) => setDateFormat(e.target.value as DateFormat)}
+                            disabled={disabled}
+                            className={`${compact ? 'p-1.5 text-xs' : 'p-2 text-xs'} text-text-muted bg-surface-alt border border-border-default rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50 min-w-[100px]`}
+                        >
+                            {DATE_FORMAT_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 );
             }
 
