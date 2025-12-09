@@ -10,6 +10,7 @@ import Footer from "./components/Layout/Footer";
 import { AuthProvider } from "@/lib/auth/context";
 import { CookieConsentProvider } from "@/lib/cookie/context";
 import { CookieConsentBanner, Analytics } from "./components/CookieConsent";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dooform.com";
 
@@ -34,7 +35,8 @@ const prompt = Prompt({
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "Dooform | แปลเอกสารราชการไทย-อังกฤษ กรอกฟอร์มอัตโนมัติ ยื่นวีซ่า สถานทูต",
+    default:
+      "Dooform | แปลเอกสารราชการไทย-อังกฤษ กรอกฟอร์มอัตโนมัติ ยื่นวีซ่า สถานทูต",
     template: "%s | Dooform - แปลเอกสารราชการออนไลน์",
   },
   description:
@@ -298,7 +300,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className="light" style={{ colorScheme: 'light' }}>
+    <html lang="th" className="light" style={{ colorScheme: "light" }}>
       <head>
         <script
           type="application/ld+json"
