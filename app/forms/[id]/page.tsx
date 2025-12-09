@@ -500,15 +500,28 @@ export default function TemplateDetailPage({ params }: PageProps) {
                                     <div className="flex items-center justify-center py-4">
                                         <Loader2 className="w-5 h-5 text-[#007398] animate-spin" />
                                     </div>
-                                ) : isAuthenticated ? (
+                                ) : (
                                     <>
-                                        <Link
-                                            href={`/forms/${templateId}/fill`}
-                                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
-                                        >
-                                            <Play className="w-4 h-4" />
-                                            เริ่มกรอกข้อมูล
-                                        </Link>
+                                        {/* Fill form button - requires login */}
+                                        {isAuthenticated ? (
+                                            <Link
+                                                href={`/forms/${templateId}/fill`}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
+                                            >
+                                                <Play className="w-4 h-4" />
+                                                เริ่มกรอกข้อมูล
+                                            </Link>
+                                        ) : (
+                                            <Link
+                                                href={`/login?redirect=/forms/${templateId}/fill`}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
+                                            >
+                                                <LogIn className="w-4 h-4" />
+                                                เข้าสู่ระบบเพื่อใช้งาน
+                                            </Link>
+                                        )}
+
+                                        {/* Preview button - public access */}
                                         {template.gcs_path_html && (
                                             <Link
                                                 href={`/forms/${templateId}/preview`}
@@ -518,32 +531,30 @@ export default function TemplateDetailPage({ params }: PageProps) {
                                                 ดูตัวอย่างเทมเพลต
                                             </Link>
                                         )}
-                                        <Link
-                                            href={`/forms/${templateId}/edit`}
-                                            className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                            แก้ไขข้อมูล
-                                        </Link>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={`/login?redirect=/forms/${templateId}/fill`}
-                                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
-                                        >
-                                            <LogIn className="w-4 h-4" />
-                                            เข้าสู่ระบบเพื่อใช้งาน
-                                        </Link>
-                                        <p className="text-xs text-gray-500 text-center">
-                                            ยังไม่มีบัญชี?{" "}
+
+                                        {/* Edit button - only for authenticated users */}
+                                        {isAuthenticated && (
                                             <Link
-                                                href={`/register?redirect=/forms/${templateId}/fill`}
-                                                className="text-[#007398] hover:underline"
+                                                href={`/forms/${templateId}/edit`}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
                                             >
-                                                สมัครสมาชิก
+                                                <Pencil className="w-4 h-4" />
+                                                แก้ไขข้อมูล
                                             </Link>
-                                        </p>
+                                        )}
+
+                                        {/* Register prompt for non-authenticated users */}
+                                        {!isAuthenticated && (
+                                            <p className="text-xs text-gray-500 text-center">
+                                                ยังไม่มีบัญชี?{" "}
+                                                <Link
+                                                    href={`/register?redirect=/forms/${templateId}/fill`}
+                                                    className="text-[#007398] hover:underline"
+                                                >
+                                                    สมัครสมาชิก
+                                                </Link>
+                                            </p>
+                                        )}
                                     </>
                                 )}
                             </div>

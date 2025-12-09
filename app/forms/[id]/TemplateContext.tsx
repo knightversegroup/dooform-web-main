@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/context";
 import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
@@ -51,8 +50,7 @@ export function TemplateProvider({
     templateId: string;
     children: ReactNode;
 }) {
-    const router = useRouter();
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isLoading: authLoading } = useAuth();
 
     const [template, setTemplate] = useState<Template | null>(null);
     const [fieldDefinitions, setFieldDefinitions] = useState<Record<string, FieldDefinition> | null>(null);
@@ -98,16 +96,13 @@ export function TemplateProvider({
         }
     }, [templateId]);
 
-    // Redirect to login if not authenticated
-    useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
-            router.replace(`/login?redirect=/forms/${templateId}/edit`);
-        }
-    }, [authLoading, isAuthenticated, router, templateId]);
+    // Note: Auth check removed from TemplateContext - individual pages handle their own auth
+    // This allows /forms/[id] to be publicly accessible while /forms/[id]/edit and /forms/[id]/fill
+    // can implement their own auth checks
 
-    // Fetch data only when authenticated
+    // Fetch data (public template data is accessible without auth)
     useEffect(() => {
-        if (authLoading || !isAuthenticated) {
+        if (authLoading) {
             return;
         }
 
@@ -170,7 +165,7 @@ export function TemplateProvider({
         };
 
         fetchData();
-    }, [templateId, authLoading, isAuthenticated]);
+    }, [templateId, authLoading]);
 
     // Initialize sections from field definitions - use saved groups or fall back to entity
     useEffect(() => {
