@@ -136,6 +136,20 @@ export const pageMetadataConfigs: Record<string, PageMetadataOptions> = {
     page: "stats",
     noIndex: true,
   },
+  templates: {
+    title: "กลุ่มเอกสาร",
+    description:
+      "เลือกกลุ่มเอกสารที่ต้องการใช้งาน รองรับเอกสารราชการหลากหลายประเภท เช่น บัตรประชาชน ทะเบียนบ้าน สูติบัตร และอื่นๆ",
+    path: "/templates",
+    page: "templates",
+    keywords: [
+      "กลุ่มเอกสาร",
+      "ประเภทเอกสาร",
+      "เทมเพลตเอกสาร",
+      "document types",
+      "template groups",
+    ],
+  },
   // NOTE: Documentation pages (MDX) use frontmatter for metadata
   // Add frontmatter to your MDX files like this:
   // ---

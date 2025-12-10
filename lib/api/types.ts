@@ -104,7 +104,7 @@ export interface DocumentType {
   name: string;           // Thai name (e.g., "บัตรประชาชน")
   name_en: string;        // English name (e.g., "Thai ID Card")
   description: string;
-  category: DocumentTypeCategory;
+  category: string;       // Category (can be custom, not limited to predefined types)
   icon: string;           // Icon name for UI
   color: string;          // Color code (e.g., "#FF5733")
   sort_order: number;
@@ -124,7 +124,7 @@ export interface DocumentTypeCreateRequest {
   name: string;
   name_en?: string;
   description?: string;
-  category?: DocumentTypeCategory;
+  category?: string;  // Allow custom categories (not limited to DocumentTypeCategory enum)
   icon?: string;
   color?: string;
   sort_order?: number;
@@ -136,7 +136,7 @@ export interface DocumentTypeUpdateRequest {
   name?: string;
   name_en?: string;
   description?: string;
-  category?: DocumentTypeCategory;
+  category?: string;  // Allow custom categories (not limited to DocumentTypeCategory enum)
   icon?: string;
   color?: string;
   sort_order?: number;

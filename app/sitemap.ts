@@ -24,14 +24,14 @@ interface GroupedResponse {
 }
 
 // Fetch all templates from API for sitemap
-async function getTemplatesForSitemap(): Promise<SitemapTemplate[]> {
+async function getTemplatesForSitemap(): Promise<{ templates: SitemapTemplate[], documentTypes: DocumentType[] }> {
   try {
     const res = await fetch(`${API_BASE_URL}/templates?grouped=true`, {
       next: { revalidate: 3600 }, // Cache for 1 hour
     });
     if (!res.ok) {
       console.error("Sitemap: Failed to fetch templates, status:", res.status);
-      return [];
+      return { templates: [], documentTypes: [] };
     }
     const data: GroupedResponse = await res.json();
 
@@ -41,10 +41,13 @@ async function getTemplatesForSitemap(): Promise<SitemapTemplate[]> {
     );
     const orphanTemplates = data.orphan_templates || [];
 
-    return [...templatesFromDocTypes, ...orphanTemplates];
+    return {
+      templates: [...templatesFromDocTypes, ...orphanTemplates],
+      documentTypes: data.document_types || [],
+    };
   } catch (error) {
     console.error("Failed to fetch templates for sitemap:", error);
-    return [];
+    return { templates: [], documentTypes: [] };
   }
 }
 
@@ -129,6 +132,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
+      url: `${baseUrl}/templates`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/documents`,
       lastModified: currentDate,
       changeFrequency: "weekly",
@@ -159,7 +168,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamic form/template pages from API
-  const templates = await getTemplatesForSitemap();
+  const { templates, documentTypes } = await getTemplatesForSitemap();
+
+  // Document type (template group) pages
+  const templateGroupsSitemap: MetadataRoute.Sitemap = documentTypes.map((docType) => ({
+    url: `${baseUrl}/templates/${docType.id}`,
+    lastModified: currentDate,
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
+
+  // Individual form pages
   const formsSitemap: MetadataRoute.Sitemap = templates.map((template) => ({
     url: `${baseUrl}/forms/${template.id}`,
     lastModified: template.updated_at || template.created_at || currentDate,
@@ -167,5 +186,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...documentSitemap, ...formsSitemap];
+  return [...staticPages, ...templateGroupsSitemap, ...documentSitemap, ...formsSitemap];
 }

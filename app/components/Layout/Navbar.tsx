@@ -74,7 +74,7 @@ type NavItem = NavItemWithDropdown | NavItemWithoutDropdown;
 const navigationItems: NavItem[] = [
   {
     label: "แบบฟอร์ม",
-    href: "/forms",
+    href: "/templates",
     hasDropdown: false,
   },
   {

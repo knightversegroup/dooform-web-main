@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/forms",
+        destination: "/templates",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const withMDX = createMDX({

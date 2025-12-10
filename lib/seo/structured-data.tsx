@@ -238,3 +238,48 @@ export function generateDocumentsPageSchema() {
     },
   };
 }
+
+// Generate structured data for templates page
+export function generateTemplatesPageSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "กลุ่มเอกสาร",
+    description:
+      "เลือกกลุ่มเอกสารที่ต้องการใช้งาน รองรับเอกสารราชการหลากหลายประเภท เช่น บัตรประชาชน ทะเบียนบ้าน สูติบัตร และอื่นๆ",
+    url: `${baseUrl}/templates`,
+    mainEntity: {
+      "@type": "ItemList",
+      name: "รายการกลุ่มเอกสาร",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          item: {
+            "@type": "Service",
+            name: "บัตรประชาชน",
+            description: "กลุ่มแบบฟอร์มบัตรประชาชนทุกรูปแบบ",
+          },
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          item: {
+            "@type": "Service",
+            name: "ทะเบียนบ้าน",
+            description: "กลุ่มแบบฟอร์มทะเบียนบ้านทุกรูปแบบ",
+          },
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          item: {
+            "@type": "Service",
+            name: "สูติบัตร",
+            description: "กลุ่มแบบฟอร์มสูติบัตรทุกรูปแบบ",
+          },
+        },
+      ],
+    },
+  };
+}

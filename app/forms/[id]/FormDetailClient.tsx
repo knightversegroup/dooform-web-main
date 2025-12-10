@@ -147,11 +147,11 @@ export default function FormDetailClient({ params }: PageProps) {
                         {error || "ไม่พบเทมเพลต"}
                     </h1>
                     <Link
-                        href="/forms"
+                        href="/templates"
                         className="inline-flex items-center text-[#007398] hover:underline"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        กลับไปหน้ารายการ
+                        กลับไปหน้ากลุ่มเอกสาร
                     </Link>
                 </div>
             </div>
@@ -163,16 +163,24 @@ export default function FormDetailClient({ params }: PageProps) {
     const headerBgColor = getHeaderBgColor(template.category || template.document_type?.category || "other");
     const displayedFields = showAllFields ? placeholders : placeholders.slice(0, 8);
 
+    // Determine back link based on document type
+    const backLink = template.document_type_id
+        ? `/templates/${template.document_type_id}`
+        : "/forms";
+    const backLinkText = template.document_type_id
+        ? `← กลับไปหน้ากลุ่มเอกสาร`
+        : "← กลับไปหน้าเทมเพลต";
+
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
             {/* Top bar */}
             <div className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
                     <Link
-                        href="/forms"
+                        href={backLink}
                         className="text-sm text-gray-600 hover:text-[#007398]"
                     >
-                        ← กลับไปหน้าเทมเพลต
+                        {backLinkText}
                     </Link>
                 </div>
             </div>

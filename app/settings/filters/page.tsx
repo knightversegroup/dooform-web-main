@@ -432,57 +432,76 @@ export default function FilterSettingsPage() {
                                         {category.options?.map((option) => (
                                             <div
                                                 key={option.id}
-                                                className={`flex items-center justify-between p-3 bg-white rounded border ${
+                                                className={`p-3 bg-white rounded border ${
                                                     option.is_active ? "border-gray-200" : "border-gray-100 opacity-60"
                                                 }`}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <GripVertical className="w-4 h-4 text-gray-300" />
-                                                    {option.color && (
-                                                        <div
-                                                            className="w-4 h-4 rounded-full border border-gray-200"
-                                                            style={{ backgroundColor: option.color }}
-                                                        />
-                                                    )}
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {option.label}
-                                                            </span>
-                                                            {option.label_en && (
-                                                                <span className="text-xs text-gray-500">
-                                                                    ({option.label_en})
-                                                                </span>
+                                                {editingOption === option.id ? (
+                                                    // Edit mode
+                                                    <EditOptionForm
+                                                        option={option}
+                                                        onSave={(data) => handleUpdateOption(option.id, data)}
+                                                        onCancel={() => setEditingOption(null)}
+                                                    />
+                                                ) : (
+                                                    // View mode
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <GripVertical className="w-4 h-4 text-gray-300" />
+                                                            {option.color && (
+                                                                <div
+                                                                    className="w-4 h-4 rounded-full border border-gray-200"
+                                                                    style={{ backgroundColor: option.color }}
+                                                                />
                                                             )}
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm font-medium text-gray-900">
+                                                                        {option.label}
+                                                                    </span>
+                                                                    {option.label_en && (
+                                                                        <span className="text-xs text-gray-500">
+                                                                            ({option.label_en})
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-gray-400">
+                                                                    value: {option.value}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-xs text-gray-400">
-                                                            value: {option.value}
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => setEditingOption(option.id)}
+                                                                className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                                                                title="แก้ไข"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleToggleOptionActive(option)}
+                                                                className={`p-1 rounded ${
+                                                                    option.is_active
+                                                                        ? "text-green-600 hover:bg-green-50"
+                                                                        : "text-gray-400 hover:bg-gray-100"
+                                                                }`}
+                                                                title={option.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                                                            >
+                                                                {option.is_active ? (
+                                                                    <Check className="w-4 h-4" />
+                                                                ) : (
+                                                                    <X className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteOption(option.id)}
+                                                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleToggleOptionActive(option)}
-                                                        className={`p-1 rounded ${
-                                                            option.is_active
-                                                                ? "text-green-600 hover:bg-green-50"
-                                                                : "text-gray-400 hover:bg-gray-100"
-                                                        }`}
-                                                        title={option.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                                                    >
-                                                        {option.is_active ? (
-                                                            <Check className="w-4 h-4" />
-                                                        ) : (
-                                                            <X className="w-4 h-4" />
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteOption(option.id)}
-                                                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
+                                                )}
                                             </div>
                                         ))}
 
@@ -518,6 +537,108 @@ export default function FilterSettingsPage() {
                         </div>
                     )}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// Edit Option Form Component
+function EditOptionForm({
+    option,
+    onSave,
+    onCancel,
+}: {
+    option: FilterOption;
+    onSave: (data: Partial<FilterOption>) => void;
+    onCancel: () => void;
+}) {
+    const [formData, setFormData] = useState({
+        value: option.value,
+        label: option.label,
+        label_en: option.label_en || "",
+        color: option.color || "",
+        description: option.description || "",
+    });
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!formData.value || !formData.label) {
+            alert("กรุณากรอก Value และ Label");
+            return;
+        }
+        setSaving(true);
+        try {
+            await onSave(formData);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="block text-xs text-gray-600 mb-1">Value *</label>
+                    <input
+                        type="text"
+                        value={formData.value}
+                        onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#007398]"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs text-gray-600 mb-1">Label (ไทย) *</label>
+                    <input
+                        type="text"
+                        value={formData.label}
+                        onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#007398]"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs text-gray-600 mb-1">Label (English)</label>
+                    <input
+                        type="text"
+                        value={formData.label_en}
+                        onChange={(e) => setFormData({ ...formData, label_en: e.target.value })}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#007398]"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs text-gray-600 mb-1">สี (Hex)</label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={formData.color}
+                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                            placeholder="#007398"
+                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#007398]"
+                        />
+                        {formData.color && (
+                            <div
+                                className="w-8 h-8 rounded border border-gray-200"
+                                style={{ backgroundColor: formData.color }}
+                            />
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="flex justify-end gap-2">
+                <button
+                    onClick={onCancel}
+                    disabled={saving}
+                    className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
+                >
+                    ยกเลิก
+                </button>
+                <button
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    className="px-3 py-1 bg-[#007398] text-white rounded text-xs hover:bg-[#005f7a] disabled:opacity-50 flex items-center gap-1"
+                >
+                    {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                    บันทึก
+                </button>
             </div>
         </div>
     );

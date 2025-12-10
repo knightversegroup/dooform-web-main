@@ -74,7 +74,7 @@ export default function DocumentTypesPage() {
     name: '',
     name_en: '',
     description: '',
-    category: 'other' as DocumentTypeCategory,
+    category: 'other',
     color: '#6B7280',
     sort_order: 0,
   });
@@ -766,7 +766,7 @@ function DocumentTypeForm({
     name: string;
     name_en: string;
     description: string;
-    category: DocumentTypeCategory;
+    category: string;
     color: string;
     sort_order: number;
   };
