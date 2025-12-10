@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
+
 import { API_BASE_URL } from "@/lib/api/types";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dooform.com";
@@ -12,16 +13,35 @@ interface SitemapTemplate {
   created_at?: string;
 }
 
+interface DocumentType {
+  id: string;
+  templates?: SitemapTemplate[];
+}
+
+interface GroupedResponse {
+  document_types?: DocumentType[];
+  orphan_templates?: SitemapTemplate[];
+}
+
 // Fetch all templates from API for sitemap
 async function getTemplatesForSitemap(): Promise<SitemapTemplate[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/templates`, {
+    const res = await fetch(`${API_BASE_URL}/templates?grouped=true`, {
       next: { revalidate: 3600 }, // Cache for 1 hour
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    // Handle both array response and wrapped response
-    return Array.isArray(data) ? data : data.templates || [];
+    if (!res.ok) {
+      console.error("Sitemap: Failed to fetch templates, status:", res.status);
+      return [];
+    }
+    const data: GroupedResponse = await res.json();
+
+    // Extract templates from document_types and orphan_templates
+    const templatesFromDocTypes = (data.document_types || []).flatMap(
+      (dt) => dt.templates || []
+    );
+    const orphanTemplates = data.orphan_templates || [];
+
+    return [...templatesFromDocTypes, ...orphanTemplates];
   } catch (error) {
     console.error("Failed to fetch templates for sitemap:", error);
     return [];
