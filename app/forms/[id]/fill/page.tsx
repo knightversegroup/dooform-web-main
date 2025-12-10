@@ -440,6 +440,19 @@ export default function FillFormPage({ params }: PageProps) {
 
       Object.keys(formData).forEach((key) => {
         const definition = fieldDefinitions[key];
+        let value = formData[key];
+
+        // Format date values according to the field's dateFormat setting
+        if (
+          definition?.inputType === "date" &&
+          value &&
+          !definition.isMerged
+        ) {
+          value = formatDateToDisplay(
+            value,
+            definition.dateFormat || "dd/mm/yyyy",
+          );
+        }
 
         if (definition?.isMerged && definition.mergedFields) {
           const splitValues = splitMergedValue(
@@ -452,7 +465,7 @@ export default function FillFormPage({ params }: PageProps) {
             apiFormData[`{{${fieldKey}}}`] = fieldValue;
           });
         } else {
-          apiFormData[`{{${key}}}`] = formData[key];
+          apiFormData[`{{${key}}}`] = value;
         }
       });
 
