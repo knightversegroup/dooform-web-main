@@ -21,6 +21,7 @@ import {
     X,
     Save,
     Plus,
+    Trash2,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { DocumentType, Template, DocumentTypeUpdateRequest } from "@/lib/api/types";
@@ -75,13 +76,24 @@ function TemplateVariantItem({
     index,
     isAuthenticated,
     authLoading,
+    onDelete,
+    deleting,
 }: {
     template: Template;
     index: number;
     isAuthenticated: boolean;
     authLoading: boolean;
+    onDelete?: (templateId: string) => void;
+    deleting?: boolean;
 }) {
     const placeholders = parsePlaceholders(template.placeholders);
+
+    const handleDelete = () => {
+        if (!onDelete) return;
+        if (confirm(`คุณต้องการลบ "${template.variant_name || template.display_name || template.name}" หรือไม่?\n\nการลบนี้จะไม่สามารถกู้คืนได้`)) {
+            onDelete(template.id);
+        }
+    };
 
     return (
         <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -140,13 +152,29 @@ function TemplateVariantItem({
                 {authLoading ? (
                     <Loader2 className="w-5 h-5 text-[#007398] animate-spin" />
                 ) : isAuthenticated ? (
-                    <Link
-                        href={`/forms/${template.id}/fill`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-[#007398] text-white rounded hover:bg-[#005f7a] transition-colors"
-                    >
-                        <Play className="w-4 h-4" />
-                        ใช้งาน
-                    </Link>
+                    <>
+                        <Link
+                            href={`/forms/${template.id}/fill`}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-[#007398] text-white rounded hover:bg-[#005f7a] transition-colors"
+                        >
+                            <Play className="w-4 h-4" />
+                            ใช้งาน
+                        </Link>
+                        {onDelete && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="inline-flex items-center gap-1 px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                title="ลบเทมเพลต"
+                            >
+                                {deleting ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                )}
+                            </button>
+                        )}
+                    </>
                 ) : (
                     <Link
                         href={`/login?redirect=/forms/${template.id}/fill`}
@@ -184,6 +212,29 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
     const [loadingCategories, setLoadingCategories] = useState(false);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [newCategory, setNewCategory] = useState("");
+
+    // Delete template state
+    const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+
+    // Delete template handler
+    const handleDeleteTemplate = async (templateId: string) => {
+        try {
+            setDeletingTemplateId(templateId);
+            await apiClient.deleteTemplate(templateId);
+            // Remove template from local state
+            if (documentType) {
+                setDocumentType({
+                    ...documentType,
+                    templates: documentType.templates?.filter(t => t.id !== templateId),
+                });
+            }
+        } catch (err) {
+            console.error("Failed to delete template:", err);
+            alert(err instanceof Error ? err.message : "ไม่สามารถลบเทมเพลตได้");
+        } finally {
+            setDeletingTemplateId(null);
+        }
+    };
 
     // Fetch categories from API
     const fetchCategories = async () => {
@@ -576,6 +627,8 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                                     index={idx}
                                                     isAuthenticated={isAuthenticated}
                                                     authLoading={authLoading}
+                                                    onDelete={handleDeleteTemplate}
+                                                    deleting={deletingTemplateId === template.id}
                                                 />
                                             ))}
                                     </div>

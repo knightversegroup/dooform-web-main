@@ -21,7 +21,9 @@ import {
     Info,
     Lock,
     Unlock,
+    Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Template, Tier } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/context";
@@ -89,12 +91,37 @@ interface PageProps {
 
 export default function FormDetailClient({ params }: PageProps) {
     const { id: templateId } = use(params);
+    const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"about" | "fields">("about");
     const [showAllFields, setShowAllFields] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    // Delete template handler
+    const handleDeleteTemplate = async () => {
+        if (!template) return;
+
+        const confirmMessage = `คุณต้องการลบ "${template.display_name || template.name}" หรือไม่?\n\nการลบนี้จะไม่สามารถกู้คืนได้`;
+        if (!confirm(confirmMessage)) return;
+
+        try {
+            setDeleting(true);
+            await apiClient.deleteTemplate(templateId);
+            // Navigate back to templates page
+            if (template.document_type_id) {
+                router.push(`/templates/${template.document_type_id}`);
+            } else {
+                router.push("/templates");
+            }
+        } catch (err) {
+            console.error("Failed to delete template:", err);
+            alert(err instanceof Error ? err.message : "ไม่สามารถลบเทมเพลตได้");
+            setDeleting(false);
+        }
+    };
 
     useEffect(() => {
         const loadTemplate = async () => {
@@ -531,6 +558,22 @@ export default function FormDetailClient({ params }: PageProps) {
                                                 <Pencil className="w-4 h-4" />
                                                 แก้ไขข้อมูล
                                             </Link>
+                                        )}
+
+                                        {/* Delete button - only for authenticated users */}
+                                        {isAuthenticated && (
+                                            <button
+                                                onClick={handleDeleteTemplate}
+                                                disabled={deleting}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                                            >
+                                                {deleting ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
+                                                {deleting ? "กำลังลบ..." : "ลบเทมเพลต"}
+                                            </button>
                                         )}
 
                                         {/* Register prompt for non-authenticated users */}

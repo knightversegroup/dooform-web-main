@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/context";
-import { DocumentType, FilterCategory } from "@/lib/api/types";
+import { DocumentType, FilterCategory, Template } from "@/lib/api/types";
 
 // Types
 interface FilterSection {
@@ -222,6 +222,69 @@ function DocumentTypeCard({ documentType }: { documentType: DocumentType }) {
     );
 }
 
+// Orphan Template Card Component (templates without a document type)
+function OrphanTemplateCard({ template }: { template: Template }) {
+    const bgColor = "#6B7280"; // Gray for orphan templates
+
+    return (
+        <Link
+            href={`/forms/${template.id}`}
+            className="block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
+        >
+            {/* Header Banner */}
+            <div
+                className="h-2"
+                style={{ backgroundColor: bgColor }}
+            />
+
+            <div className="p-4">
+                {/* Category and badges */}
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs text-gray-600">
+                        {template.category || "แบบฟอร์ม"}
+                    </span>
+                    {template.is_verified && (
+                        <span className="inline-flex items-center text-xs text-blue-600">
+                            <CheckCircle className="w-3 h-3 mr-0.5" />
+                            Verified
+                        </span>
+                    )}
+                    {template.is_ai_available && (
+                        <span className="inline-flex items-center text-xs text-purple-600">
+                            <Sparkles className="w-3 h-3 mr-0.5" />
+                            AI
+                        </span>
+                    )}
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-medium text-gray-900 group-hover:text-[#007398] transition-colors mb-1">
+                    {template.display_name || template.name}
+                </h3>
+
+                {/* Description */}
+                {template.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {template.description}
+                    </p>
+                )}
+
+                {/* Footer info */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <span className="inline-flex items-center text-xs text-gray-500">
+                        <FileText className="w-4 h-4 mr-1" />
+                        แบบฟอร์มเดี่ยว
+                    </span>
+                    <span className="text-sm text-[#007398] group-hover:underline flex items-center gap-1">
+                        กรอกข้อมูล
+                        <ChevronRight className="w-4 h-4" />
+                    </span>
+                </div>
+            </div>
+        </Link>
+    );
+}
+
 // Suggested Topics Sidebar
 function SuggestedTopics() {
     return (
@@ -249,26 +312,28 @@ function SuggestedTopics() {
 export default function TemplateGroupList() {
     const { isAuthenticated } = useAuth();
     const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
+    const [orphanTemplates, setOrphanTemplates] = useState<Template[]>([]);
     const [filterCategories, setFilterCategories] = useState<FilterCategory[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
 
-    // Load document types from API
+    // Load document types and orphan templates from API
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
                 setError(null);
 
-                // Fetch document types with templates
-                const [docTypesResponse, filtersResponse] = await Promise.all([
-                    apiClient.getDocumentTypes({ includeTemplates: true, activeOnly: true }),
+                // Fetch grouped templates (includes both document types and orphan templates)
+                const [groupedResponse, filtersResponse] = await Promise.all([
+                    apiClient.getTemplatesGrouped(),
                     apiClient.getFilters().catch(() => [] as FilterCategory[]),
                 ]);
 
-                setDocumentTypes(docTypesResponse || []);
+                setDocumentTypes(groupedResponse.document_types || []);
+                setOrphanTemplates(groupedResponse.orphan_templates || []);
 
                 // Set filters from API
                 const activeFilters = filtersResponse.filter((f) => f.is_active);
@@ -364,6 +429,35 @@ export default function TemplateGroupList() {
         return true;
     });
 
+    // Filter orphan templates
+    const filteredOrphanTemplates = orphanTemplates.filter((template) => {
+        // Search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchesSearch =
+                (template.display_name || "").toLowerCase().includes(query) ||
+                (template.name || "").toLowerCase().includes(query) ||
+                (template.description || "").toLowerCase().includes(query) ||
+                (template.category || "").toLowerCase().includes(query);
+            if (!matchesSearch) return false;
+        }
+
+        // Category filter - orphan templates don't have document type category
+        // but they might have their own category field
+        const selectedCategories = selectedFilters["category"] || [];
+        if (selectedCategories.length > 0) {
+            // Don't filter out orphans when category is selected unless they have a category
+            if (template.category && !selectedCategories.includes(template.category)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    // Total count
+    const totalCount = filteredDocumentTypes.length + filteredOrphanTemplates.length;
+
     return (
         <section className="bg-gray-50 min-h-screen font-sans">
             {/* Header */}
@@ -372,13 +466,13 @@ export default function TemplateGroupList() {
                     {/* Search bar */}
                     <div className="max-w-2xl mx-auto">
                         <label className="block text-sm text-gray-600 mb-2">
-                            ค้นหากลุ่มเอกสาร
+                            ค้นหาแบบฟอร์ม
                         </label>
                         <div className="flex gap-2">
                             <div className="relative flex-1">
                                 <input
                                     type="text"
-                                    placeholder="พิมพ์ชื่อกลุ่มเอกสาร..."
+                                    placeholder="พิมพ์ชื่อแบบฟอร์ม..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#007398] focus:ring-1 focus:ring-[#007398]"
@@ -399,7 +493,7 @@ export default function TemplateGroupList() {
                         {/* Results count */}
                         <div className="mb-4">
                             <h2 className="text-xl font-light text-gray-900">
-                                {loading ? "..." : filteredDocumentTypes.length.toLocaleString()} กลุ่มเอกสาร
+                                {loading ? "..." : totalCount.toLocaleString()} แบบฟอร์ม
                             </h2>
                         </div>
 
@@ -484,12 +578,20 @@ export default function TemplateGroupList() {
                         {/* Results Grid */}
                         {!loading && !error && (
                             <div>
-                                {filteredDocumentTypes.length > 0 ? (
+                                {totalCount > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {/* Document Type Cards */}
                                         {filteredDocumentTypes.map((docType) => (
                                             <DocumentTypeCard
                                                 key={docType.id}
                                                 documentType={docType}
+                                            />
+                                        ))}
+                                        {/* Orphan Template Cards */}
+                                        {filteredOrphanTemplates.map((template) => (
+                                            <OrphanTemplateCard
+                                                key={template.id}
+                                                template={template}
                                             />
                                         ))}
                                     </div>
@@ -498,8 +600,8 @@ export default function TemplateGroupList() {
                                         <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                                         <p className="text-sm text-gray-500 mb-4">
                                             {hasActiveFilters
-                                                ? "ไม่พบกลุ่มเอกสารที่ตรงกับการค้นหา"
-                                                : "ยังไม่มีกลุ่มเอกสาร"}
+                                                ? "ไม่พบแบบฟอร์มที่ตรงกับการค้นหา"
+                                                : "ยังไม่มีแบบฟอร์ม"}
                                         </p>
                                         {hasActiveFilters && (
                                             <button
@@ -512,24 +614,6 @@ export default function TemplateGroupList() {
                                     </div>
                                 )}
 
-                                {/* Browse by form link */}
-                                {!loading && filteredDocumentTypes.length > 0 && (
-                                    <div className="mt-8 p-4 bg-white border border-gray-200 rounded">
-                                        <h4 className="font-medium text-gray-900 mb-1">
-                                            ต้องการค้นหาแบบฟอร์มโดยตรง?
-                                        </h4>
-                                        <p className="text-sm text-gray-600 mb-3">
-                                            ไปที่หน้าเทมเพลตเพื่อค้นหาและใช้งานแบบฟอร์มโดยตรง
-                                        </p>
-                                        <Link
-                                            href="/forms"
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white rounded text-sm hover:bg-[#005f7a] transition-colors"
-                                        >
-                                            ไปยังหน้าเทมเพลต
-                                            <ChevronRight className="w-4 h-4" />
-                                        </Link>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </main>
