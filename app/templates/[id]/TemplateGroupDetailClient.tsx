@@ -216,6 +216,15 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
     // Delete template state
     const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
+    // Add variant modal state
+    const [isAddVariantOpen, setIsAddVariantOpen] = useState(false);
+    const [orphanTemplates, setOrphanTemplates] = useState<Template[]>([]);
+    const [loadingOrphans, setLoadingOrphans] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState("");
+    const [variantName, setVariantName] = useState("");
+    const [variantOrder, setVariantOrder] = useState(0);
+    const [addingVariant, setAddingVariant] = useState(false);
+
     // Delete template handler
     const handleDeleteTemplate = async (templateId: string) => {
         try {
@@ -233,6 +242,57 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
             alert(err instanceof Error ? err.message : "ไม่สามารถลบเทมเพลตได้");
         } finally {
             setDeletingTemplateId(null);
+        }
+    };
+
+    // Fetch orphan templates for adding variants
+    const fetchOrphanTemplates = async () => {
+        try {
+            setLoadingOrphans(true);
+            const response = await apiClient.getTemplatesGrouped();
+            setOrphanTemplates(response.orphan_templates || []);
+        } catch (err) {
+            console.error("Failed to fetch orphan templates:", err);
+        } finally {
+            setLoadingOrphans(false);
+        }
+    };
+
+    // Open add variant modal
+    const openAddVariantModal = () => {
+        setSelectedTemplateId("");
+        setVariantName("");
+        setVariantOrder((documentType?.templates?.length || 0) + 1);
+        setIsAddVariantOpen(true);
+        fetchOrphanTemplates();
+    };
+
+    // Add variant handler
+    const handleAddVariant = async () => {
+        if (!selectedTemplateId) {
+            alert("กรุณาเลือกเทมเพลต");
+            return;
+        }
+
+        try {
+            setAddingVariant(true);
+            await apiClient.assignTemplateToDocumentType(
+                documentTypeId,
+                selectedTemplateId,
+                variantName || `รูปแบบ ${variantOrder}`,
+                variantOrder
+            );
+
+            // Refresh document type data
+            const updatedDocType = await apiClient.getDocumentType(documentTypeId, true);
+            setDocumentType(updatedDocType);
+
+            setIsAddVariantOpen(false);
+        } catch (err) {
+            console.error("Failed to add variant:", err);
+            alert(err instanceof Error ? err.message : "ไม่สามารถเพิ่มรูปแบบเอกสารได้");
+        } finally {
+            setAddingVariant(false);
         }
     };
 
@@ -612,9 +672,20 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
 
                         {activeTab === "variants" && (
                             <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                <h2 className="text-xl font-medium text-gray-900 mb-4">
-                                    รูปแบบเอกสาร ({templates.length} รูปแบบ)
-                                </h2>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-medium text-gray-900">
+                                        รูปแบบเอกสาร ({templates.length} รูปแบบ)
+                                    </h2>
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={openAddVariantModal}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#007398] text-white text-sm rounded hover:bg-[#005f7a] transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            เพิ่มรูปแบบ
+                                        </button>
+                                    )}
+                                </div>
 
                                 {templates.length > 0 ? (
                                     <div className="space-y-3">
@@ -980,6 +1051,133 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                     </>
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Variant Modal */}
+            {isAddVariantOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4">
+                        {/* Backdrop */}
+                        <div
+                            className="fixed inset-0 bg-black/50"
+                            onClick={() => !addingVariant && setIsAddVariantOpen(false)}
+                        />
+
+                        {/* Modal */}
+                        <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    เพิ่มรูปแบบเอกสาร
+                                </h3>
+                                <button
+                                    onClick={() => setIsAddVariantOpen(false)}
+                                    disabled={addingVariant}
+                                    className="p-1 text-gray-500 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-4 space-y-4">
+                                {/* Template Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        เลือกเทมเพลต <span className="text-red-500">*</span>
+                                    </label>
+                                    {loadingOrphans ? (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="w-5 h-5 text-[#007398] animate-spin" />
+                                        </div>
+                                    ) : orphanTemplates.length > 0 ? (
+                                        <select
+                                            value={selectedTemplateId}
+                                            onChange={(e) => {
+                                                setSelectedTemplateId(e.target.value);
+                                                const selected = orphanTemplates.find(t => t.id === e.target.value);
+                                                if (selected && !variantName) {
+                                                    setVariantName(selected.display_name || selected.name || "");
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent"
+                                        >
+                                            <option value="">เลือกเทมเพลต...</option>
+                                            {orphanTemplates.map((t) => (
+                                                <option key={t.id} value={t.id}>
+                                                    {t.display_name || t.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm text-gray-500 py-2">
+                                            ไม่มีเทมเพลตที่สามารถเพิ่มได้ (ทุกเทมเพลตอยู่ในกลุ่มแล้ว)
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Variant Name */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        ชื่อรูปแบบ
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={variantName}
+                                        onChange={(e) => setVariantName(e.target.value)}
+                                        placeholder="เช่น ด้านหน้า, ด้านหลัง, แบบที่ 1"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        หากไม่กรอกจะใช้ชื่อเทมเพลตเดิม
+                                    </p>
+                                </div>
+
+                                {/* Variant Order */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        ลำดับการแสดง
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={variantOrder}
+                                        onChange={(e) => setVariantOrder(parseInt(e.target.value) || 0)}
+                                        min={1}
+                                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
+                                <button
+                                    onClick={() => setIsAddVariantOpen(false)}
+                                    disabled={addingVariant}
+                                    className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    ยกเลิก
+                                </button>
+                                <button
+                                    onClick={handleAddVariant}
+                                    disabled={addingVariant || !selectedTemplateId}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded-lg hover:bg-[#005f7a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {addingVariant ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            กำลังเพิ่ม...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" />
+                                            เพิ่มรูปแบบ
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
