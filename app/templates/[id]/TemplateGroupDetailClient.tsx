@@ -333,6 +333,7 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                 name: documentType.name,
                 name_en: documentType.name_en || "",
                 description: documentType.description || "",
+                original_source: documentType.original_source || "",
                 category: documentType.category,
                 code: documentType.code,
             });
@@ -1044,6 +1045,20 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                     rows={3}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent resize-none"
                                     placeholder="อธิบายเกี่ยวกับกลุ่มเอกสารนี้..."
+                                />
+                            </div>
+
+                            {/* Original Source */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    แหล่งที่มา
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editForm.original_source || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, original_source: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent"
+                                    placeholder="เช่น กรมการปกครอง, สำนักงานเขต..."
                                 />
                             </div>
 
