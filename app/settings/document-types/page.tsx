@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { apiClient } from '@/lib/api/client';
-import { DocumentType, DocumentTypeCategory, Template, TemplateAssignment, SuggestedGroup } from '@/lib/api/types';
+import { DocumentType, DocumentTypeCategory, Template, TemplateAssignment, SuggestedGroup, FilterCategory } from '@/lib/api/types';
 import {
   Plus,
   Pencil,
@@ -22,21 +22,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-// Category labels in Thai
-const categoryLabels: Record<string, string> = {
-  identification: 'บัตรประจำตัว',
-  certificate: 'ใบรับรอง',
-  contract: 'สัญญา',
-  application: 'แบบฟอร์มคำขอ',
-  financial: 'เอกสารการเงิน',
-  government: 'เอกสารราชการ',
-  education: 'เอกสารการศึกษา',
-  medical: 'เอกสารทางการแพทย์',
-  other: 'อื่นๆ',
-};
-
-// Default colors for categories
-const categoryColors: Record<string, string> = {
+// Default colors for categories (fallback)
+const defaultCategoryColors: Record<string, string> = {
   identification: '#3B82F6',
   certificate: '#10B981',
   contract: '#F59E0B',
@@ -45,6 +32,10 @@ const categoryColors: Record<string, string> = {
   government: '#6366F1',
   education: '#EC4899',
   medical: '#14B8A6',
+  legal: '#1d4ed8',
+  finance: '#047857',
+  hr: '#c2410c',
+  business: '#0f766e',
   other: '#6B7280',
 };
 
@@ -55,6 +46,8 @@ export default function DocumentTypesPage() {
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestedGroup[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{ value: string; label: string }[]>([]);
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [applyingSuggestion, setApplyingSuggestion] = useState<string | null>(null);
@@ -98,13 +91,30 @@ export default function DocumentTypesPage() {
       setLoading(true);
       setError(null);
 
-      const [docTypesData, templatesData] = await Promise.all([
+      const [docTypesData, templatesData, filtersData] = await Promise.all([
         apiClient.getDocumentTypes({ includeTemplates: true }),
         apiClient.getAllTemplates(),
+        apiClient.getFilters().catch(() => [] as FilterCategory[]),
       ]);
 
       setDocumentTypes(docTypesData);
       setTemplates(templatesData.templates || []);
+
+      // Extract category options from filters API
+      const categoryFilter = filtersData.find((f: FilterCategory) => f.field_name === 'category');
+      if (categoryFilter && categoryFilter.options) {
+        const options = categoryFilter.options
+          .filter((opt) => opt.is_active)
+          .map((opt) => ({ value: opt.value, label: opt.label }));
+        setCategoryOptions(options);
+
+        // Build labels map
+        const labels: Record<string, string> = {};
+        categoryFilter.options.forEach((opt) => {
+          labels[opt.value] = opt.label;
+        });
+        setCategoryLabels(labels);
+      }
 
       // Fetch auto-suggestions
       try {
@@ -610,6 +620,7 @@ export default function DocumentTypesPage() {
             }}
             saving={saving}
             submitLabel="สร้าง"
+            categoryOptions={categoryOptions}
           />
         </Modal>
       )}
@@ -635,6 +646,7 @@ export default function DocumentTypesPage() {
             }}
             saving={saving}
             submitLabel="บันทึก"
+            categoryOptions={categoryOptions}
           />
         </Modal>
       )}
@@ -760,6 +772,7 @@ function DocumentTypeForm({
   onCancel,
   saving,
   submitLabel,
+  categoryOptions,
 }: {
   formData: {
     code: string;
@@ -775,6 +788,7 @@ function DocumentTypeForm({
   onCancel: () => void;
   saving: boolean;
   submitLabel: string;
+  categoryOptions: { value: string; label: string }[];
 }) {
   return (
     <div className="space-y-4">
@@ -837,17 +851,18 @@ function DocumentTypeForm({
           <select
             value={formData.category}
             onChange={(e) => {
-              const cat = e.target.value as DocumentTypeCategory;
+              const cat = e.target.value;
               setFormData({
                 ...formData,
                 category: cat,
-                color: categoryColors[cat] || formData.color
+                color: defaultCategoryColors[cat] || formData.color
               });
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            {Object.entries(categoryLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+            <option value="">เลือกหมวดหมู่</option>
+            {categoryOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>

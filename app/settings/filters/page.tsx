@@ -313,9 +313,6 @@ export default function FilterSettingsPage() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className="font-medium text-gray-900">{category.name}</span>
-                                            {category.name_en && (
-                                                <span className="text-sm text-gray-500">({category.name_en})</span>
-                                            )}
                                             {category.is_system && (
                                                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
                                                     System
@@ -455,16 +452,9 @@ export default function FilterSettingsPage() {
                                                                 />
                                                             )}
                                                             <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm font-medium text-gray-900">
-                                                                        {option.label}
-                                                                    </span>
-                                                                    {option.label_en && (
-                                                                        <span className="text-xs text-gray-500">
-                                                                            ({option.label_en})
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                <span className="text-sm font-medium text-gray-900">
+                                                                    {option.label}
+                                                                </span>
                                                                 <div className="text-xs text-gray-400">
                                                                     value: {option.value}
                                                                 </div>
