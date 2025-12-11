@@ -149,136 +149,126 @@ function getHeaderBgColor(category: string): string {
     return colors[category] || "#007398";
 }
 
-// Document Type Card Component
-function DocumentTypeCard({ documentType }: { documentType: DocumentType }) {
+// Document Type Card Component - Horizontal List Style
+function DocumentTypeCard({
+    documentType,
+    categoryLabels
+}: {
+    documentType: DocumentType;
+    categoryLabels: Record<string, string>;
+}) {
     const templateCount = documentType.templates?.length || 0;
     const hasVerified = documentType.templates?.some((t) => t.is_verified);
     const hasAI = documentType.templates?.some((t) => t.is_ai_available);
     const bgColor = getHeaderBgColor(documentType.category);
+    const categoryLabel = categoryLabels[documentType.category] || documentType.category || "เอกสาร";
 
     return (
         <Link
             href={`/templates/${documentType.id}`}
-            className="block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
+            className="flex items-center bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
         >
-            {/* Header Banner */}
+            {/* Left Color Bar */}
             <div
-                className="h-2"
+                className="w-1.5 self-stretch flex-shrink-0"
                 style={{ backgroundColor: bgColor }}
             />
 
-            <div className="p-4">
-                {/* Category and badges */}
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-gray-600">
-                        {documentType.category || "เอกสาร"}
-                    </span>
-                    {hasVerified && (
-                        <span className="inline-flex items-center text-xs text-blue-600">
-                            <CheckCircle className="w-3 h-3 mr-0.5" />
-                            Verified
-                        </span>
-                    )}
-                    {hasAI && (
-                        <span className="inline-flex items-center text-xs text-purple-600">
-                            <Sparkles className="w-3 h-3 mr-0.5" />
-                            AI
-                        </span>
+            <div className="flex-1 flex items-center justify-between p-4 gap-4">
+                {/* Left - Main Info */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-base font-medium text-gray-900 group-hover:text-[#007398] transition-colors truncate">
+                            {documentType.name}
+                        </h3>
+                        {hasVerified && (
+                            <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        )}
+                        {hasAI && (
+                            <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                        )}
+                    </div>
+                    {documentType.original_source && (
+                        <p className="text-sm text-gray-500 line-clamp-1">
+                            {documentType.original_source}
+                        </p>
                     )}
                 </div>
 
-                {/* Title */}
-                <h3 className="text-lg font-medium text-gray-900 group-hover:text-[#007398] transition-colors mb-1">
-                    {documentType.name}
-                </h3>
+                {/* Center - Category Badge */}
+                <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        {categoryLabel}
+                    </span>
+                </div>
 
-                {/* English name */}
-                {documentType.name_en && (
-                    <p className="text-sm text-gray-500 mb-2">
-                        {documentType.name_en}
-                    </p>
-                )}
-
-                {/* Description */}
-                {documentType.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {documentType.description}
-                    </p>
-                )}
-
-                {/* Footer info */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                {/* Right - Count & Arrow */}
+                <div className="flex items-center gap-4 flex-shrink-0">
                     <span className="inline-flex items-center text-sm text-gray-600">
                         <FileText className="w-4 h-4 mr-1" />
                         {templateCount} รูปแบบ
                     </span>
-                    <span className="text-sm text-[#007398] group-hover:underline flex items-center gap-1">
-                        ดูรายละเอียด
-                        <ChevronRight className="w-4 h-4" />
-                    </span>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#007398]" />
                 </div>
             </div>
         </Link>
     );
 }
 
-// Orphan Template Card Component (templates without a document type)
-function OrphanTemplateCard({ template }: { template: Template }) {
+// Orphan Template Card Component - Horizontal List Style (templates without a document type)
+function OrphanTemplateCard({
+    template,
+    categoryLabels
+}: {
+    template: Template;
+    categoryLabels: Record<string, string>;
+}) {
     const bgColor = "#6B7280"; // Gray for orphan templates
+    const categoryLabel = categoryLabels[template.category] || template.category || "แบบฟอร์มเดี่ยว";
 
     return (
         <Link
             href={`/forms/${template.id}`}
-            className="block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
+            className="flex items-center bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
         >
-            {/* Header Banner */}
+            {/* Left Color Bar */}
             <div
-                className="h-2"
+                className="w-1.5 self-stretch flex-shrink-0"
                 style={{ backgroundColor: bgColor }}
             />
 
-            <div className="p-4">
-                {/* Category and badges */}
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-gray-600">
-                        {template.category || "แบบฟอร์ม"}
-                    </span>
-                    {template.is_verified && (
-                        <span className="inline-flex items-center text-xs text-blue-600">
-                            <CheckCircle className="w-3 h-3 mr-0.5" />
-                            Verified
-                        </span>
-                    )}
-                    {template.is_ai_available && (
-                        <span className="inline-flex items-center text-xs text-purple-600">
-                            <Sparkles className="w-3 h-3 mr-0.5" />
-                            AI
-                        </span>
+            <div className="flex-1 flex items-center justify-between p-4 gap-4">
+                {/* Left - Main Info */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-base font-medium text-gray-900 group-hover:text-[#007398] transition-colors truncate">
+                            {template.display_name || template.name}
+                        </h3>
+                        {template.is_verified && (
+                            <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        )}
+                        {template.is_ai_available && (
+                            <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                        )}
+                    </div>
+                    {template.original_source && (
+                        <p className="text-sm text-gray-500 line-clamp-1">
+                            {template.original_source}
+                        </p>
                     )}
                 </div>
 
-                {/* Title */}
-                <h3 className="text-lg font-medium text-gray-900 group-hover:text-[#007398] transition-colors mb-1">
-                    {template.display_name || template.name}
-                </h3>
-
-                {/* Description */}
-                {template.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {template.description}
-                    </p>
-                )}
-
-                {/* Footer info */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <span className="inline-flex items-center text-xs text-gray-500">
-                        <FileText className="w-4 h-4 mr-1" />
-                        แบบฟอร์มเดี่ยว
+                {/* Center - Category Badge */}
+                <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        {categoryLabel}
                     </span>
-                    <span className="text-sm text-[#007398] group-hover:underline flex items-center gap-1">
-                        กรอกข้อมูล
-                        <ChevronRight className="w-4 h-4" />
-                    </span>
+                </div>
+
+                {/* Right - Arrow */}
+                <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="text-sm text-[#007398]">กรอกข้อมูล</span>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#007398]" />
                 </div>
             </div>
         </Link>
@@ -358,28 +348,57 @@ export default function TemplateGroupList() {
         loadData();
     }, []);
 
-    // Build filter sections for category
-    const categoryFilterSection: FilterSection | null = (() => {
-        const categorySet = new Map<string, number>();
-        documentTypes.forEach((dt) => {
-            if (dt.category) {
-                categorySet.set(dt.category, (categorySet.get(dt.category) || 0) + 1);
-            }
+    // Build category labels map from API filter (value -> label)
+    const apiCategoryLabels: Record<string, string> = {};
+    const apiCategoryFilter = filterCategories.find((cat) => cat.field_name === "category");
+    if (apiCategoryFilter && apiCategoryFilter.options) {
+        apiCategoryFilter.options.forEach((opt) => {
+            apiCategoryLabels[opt.value] = opt.label;
         });
+    }
 
-        if (categorySet.size === 0) return null;
+    // Build category filter from actual document types and orphan templates
+    const categoryCountMap = new Map<string, number>();
+    documentTypes.forEach((dt) => {
+        if (dt.category) {
+            categoryCountMap.set(dt.category, (categoryCountMap.get(dt.category) || 0) + 1);
+        }
+    });
+    orphanTemplates.forEach((t) => {
+        if (t.category) {
+            categoryCountMap.set(t.category, (categoryCountMap.get(t.category) || 0) + 1);
+        }
+    });
 
-        return {
+    // Build filter sections from API filter categories (excluding category - we build it ourselves)
+    const filterSections: FilterSection[] = filterCategories
+        .filter((cat) => cat.is_active && cat.options && cat.options.length > 0 && cat.field_name !== "category")
+        .map((cat) => ({
+            id: cat.id,
+            fieldName: cat.field_name,
+            title: cat.name,
+            options: (cat.options || [])
+                .filter((opt) => opt.is_active)
+                .map((opt) => ({
+                    value: opt.value,
+                    label: opt.label,
+                    count: opt.count || 0,
+                })),
+        }));
+
+    // Add category filter built from actual data (with API labels if available)
+    if (categoryCountMap.size > 0) {
+        filterSections.unshift({
             id: "category",
             fieldName: "category",
             title: "หมวดหมู่",
-            options: Array.from(categorySet.entries()).map(([value, count]) => ({
+            options: Array.from(categoryCountMap.entries()).map(([value, count]) => ({
                 value,
-                label: value,
+                label: apiCategoryLabels[value] || value,
                 count,
             })),
-        };
-    })();
+        });
+    }
 
     const handleFilterChange = (fieldName: string, value: string) => {
         setSelectedFilters((prev) => {
@@ -442,12 +461,11 @@ export default function TemplateGroupList() {
             if (!matchesSearch) return false;
         }
 
-        // Category filter - orphan templates don't have document type category
-        // but they might have their own category field
+        // Category filter - only show orphan templates that match selected categories
         const selectedCategories = selectedFilters["category"] || [];
         if (selectedCategories.length > 0) {
-            // Don't filter out orphans when category is selected unless they have a category
-            if (template.category && !selectedCategories.includes(template.category)) {
+            // If categories are selected, only show templates that have a matching category
+            if (!template.category || !selectedCategories.includes(template.category)) {
                 return false;
             }
         }
@@ -457,6 +475,9 @@ export default function TemplateGroupList() {
 
     // Total count
     const totalCount = filteredDocumentTypes.length + filteredOrphanTemplates.length;
+
+    // Use the apiCategoryLabels for card display (already built above)
+    const categoryLabels = apiCategoryLabels;
 
     return (
         <section className="bg-gray-50 min-h-screen font-sans">
@@ -513,16 +534,17 @@ export default function TemplateGroupList() {
                                 )}
                             </div>
 
-                            {/* Category Filter Section */}
-                            {categoryFilterSection && (
+                            {/* All Filter Sections */}
+                            {filterSections.map((section) => (
                                 <FilterSectionComponent
-                                    section={categoryFilterSection}
-                                    selectedFilters={selectedFilters["category"] || []}
+                                    key={section.id}
+                                    section={section}
+                                    selectedFilters={selectedFilters[section.fieldName] || []}
                                     onFilterChange={(value) =>
-                                        handleFilterChange("category", value)
+                                        handleFilterChange(section.fieldName, value)
                                     }
                                 />
-                            )}
+                            ))}
                         </div>
 
                         {/* Action buttons - only show for logged in users */}
@@ -579,12 +601,13 @@ export default function TemplateGroupList() {
                         {!loading && !error && (
                             <div>
                                 {totalCount > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="flex flex-col gap-3">
                                         {/* Document Type Cards */}
                                         {filteredDocumentTypes.map((docType) => (
                                             <DocumentTypeCard
                                                 key={docType.id}
                                                 documentType={docType}
+                                                categoryLabels={categoryLabels}
                                             />
                                         ))}
                                         {/* Orphan Template Cards */}
@@ -592,6 +615,7 @@ export default function TemplateGroupList() {
                                             <OrphanTemplateCard
                                                 key={template.id}
                                                 template={template}
+                                                categoryLabels={categoryLabels}
                                             />
                                         ))}
                                     </div>

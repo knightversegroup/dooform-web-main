@@ -24,7 +24,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { DocumentType, Template, DocumentTypeUpdateRequest } from "@/lib/api/types";
+import { DocumentType, Template, DocumentTypeUpdateRequest, FilterCategory } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/context";
 
 // Helper to parse placeholders
@@ -208,7 +208,8 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
     const [saveError, setSaveError] = useState<string | null>(null);
 
     // Category state
-    const [categories, setCategories] = useState<string[]>([]);
+    const [categories, setCategories] = useState<{ value: string; label: string }[]>([]);
+    const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
     const [loadingCategories, setLoadingCategories] = useState(false);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [newCategory, setNewCategory] = useState("");
@@ -296,15 +297,29 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
         }
     };
 
-    // Fetch categories from API
+    // Fetch categories from filter API
     const fetchCategories = async () => {
         try {
             setLoadingCategories(true);
-            const fetchedCategories = await apiClient.getDocumentTypeCategories();
-            setCategories(fetchedCategories || []);
+            const filtersData = await apiClient.getFilters();
+            const categoryFilter = filtersData.find((f: FilterCategory) => f.field_name === "category");
+            if (categoryFilter && categoryFilter.options) {
+                const options = categoryFilter.options
+                    .filter((opt) => opt.is_active)
+                    .map((opt) => ({ value: opt.value, label: opt.label }));
+                setCategories(options);
+
+                // Build labels map
+                const labels: Record<string, string> = {};
+                categoryFilter.options.forEach((opt) => {
+                    labels[opt.value] = opt.label;
+                });
+                setCategoryLabels(labels);
+            } else {
+                setCategories([]);
+            }
         } catch (err) {
             console.error("Failed to fetch categories:", err);
-            // Fallback to empty array
             setCategories([]);
         } finally {
             setLoadingCategories(false);
@@ -333,8 +348,10 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
     const handleAddCategory = () => {
         if (newCategory.trim()) {
             const categoryValue = newCategory.trim().toLowerCase().replace(/\s+/g, "_");
+            const categoryLabel = newCategory.trim();
             setEditForm({ ...editForm, category: categoryValue });
-            setCategories(prev => [...prev, categoryValue]);
+            setCategories(prev => [...prev, { value: categoryValue, label: categoryLabel }]);
+            setCategoryLabels(prev => ({ ...prev, [categoryValue]: categoryLabel }));
             setIsAddingCategory(false);
             setNewCategory("");
         }
@@ -371,9 +388,22 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                 setLoading(true);
                 setError(null);
 
-                // Get document type with templates
-                const docType = await apiClient.getDocumentType(documentTypeId, true);
+                // Get document type with templates and category labels
+                const [docType, filtersData] = await Promise.all([
+                    apiClient.getDocumentType(documentTypeId, true),
+                    apiClient.getFilters().catch(() => [] as FilterCategory[]),
+                ]);
                 setDocumentType(docType);
+
+                // Extract category labels
+                const categoryFilter = filtersData.find((f: FilterCategory) => f.field_name === "category");
+                if (categoryFilter && categoryFilter.options) {
+                    const labels: Record<string, string> = {};
+                    categoryFilter.options.forEach((opt) => {
+                        labels[opt.value] = opt.label;
+                    });
+                    setCategoryLabels(labels);
+                }
             } catch (err) {
                 console.error("Failed to load document type:", err);
                 setError(
@@ -597,7 +627,7 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                             <div>
                                                 <dt className="text-gray-500">หมวดหมู่</dt>
                                                 <dd className="text-gray-900 font-medium">
-                                                    {documentType.category}
+                                                    {categoryLabels[documentType.category] || documentType.category}
                                                 </dd>
                                             </div>
                                         )}
@@ -982,8 +1012,8 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                                 {loadingCategories ? "กำลังโหลด..." : "เลือกหมวดหมู่"}
                                             </option>
                                             {categories.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
+                                                <option key={cat.value} value={cat.value}>
+                                                    {cat.label}
                                                 </option>
                                             ))}
                                         </select>
@@ -999,7 +1029,7 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                     </div>
                                 )}
                                 <p className="text-xs text-gray-500 mt-1">
-                                    {editForm.category && `หมวดหมู่ปัจจุบัน: ${editForm.category}`}
+                                    {editForm.category && `หมวดหมู่ปัจจุบัน: ${categoryLabels[editForm.category] || editForm.category}`}
                                 </p>
                             </div>
 

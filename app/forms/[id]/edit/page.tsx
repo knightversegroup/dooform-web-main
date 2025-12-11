@@ -23,7 +23,7 @@ import {
     Unlink,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType } from "@/lib/api/types";
+import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType, FilterCategory } from "@/lib/api/types";
 import { detectMergeableGroups, createMergedFieldDefinition } from "@/lib/utils/fieldTypes";
 import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
@@ -92,6 +92,11 @@ export default function EditFormPage({ params }: PageProps) {
     const [docTypeAssigning, setDocTypeAssigning] = useState(false);
     const [docTypeSuccess, setDocTypeSuccess] = useState(false);
 
+    // Category options state
+    const [categoryOptions, setCategoryOptions] = useState<{ value: string; label: string }[]>([]);
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+
     // Form state
     const [formData, setFormData] = useState({
         displayName: "",
@@ -123,10 +128,22 @@ export default function EditFormPage({ params }: PageProps) {
                 setLoading(true);
                 setError(null);
 
-                // Load document types
+                // Load document types and category options
                 try {
-                    const docTypes = await apiClient.getDocumentTypes({ activeOnly: true });
+                    const [docTypes, filtersData] = await Promise.all([
+                        apiClient.getDocumentTypes({ activeOnly: true }),
+                        apiClient.getFilters().catch(() => [] as FilterCategory[]),
+                    ]);
                     setDocumentTypes(docTypes);
+
+                    // Extract category options from filters
+                    const categoryFilter = filtersData.find((f: FilterCategory) => f.field_name === "category");
+                    if (categoryFilter && categoryFilter.options) {
+                        const options = categoryFilter.options
+                            .filter((opt) => opt.is_active)
+                            .map((opt) => ({ value: opt.value, label: opt.label }));
+                        setCategoryOptions(options);
+                    }
                 } catch (err) {
                     console.error("Failed to load document types:", err);
                 }
@@ -325,6 +342,18 @@ export default function EditFormPage({ params }: PageProps) {
             [placeholder]: alias,
         }));
         setSuccess(false);
+    };
+
+    // Add new category
+    const handleAddCategory = () => {
+        if (newCategoryName.trim()) {
+            const categoryValue = newCategoryName.trim().toLowerCase().replace(/\s+/g, "_");
+            const categoryLabel = newCategoryName.trim();
+            setFormData({ ...formData, category: categoryValue });
+            setCategoryOptions(prev => [...prev, { value: categoryValue, label: categoryLabel }]);
+            setIsAddingCategory(false);
+            setNewCategoryName("");
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -626,15 +655,74 @@ export default function EditFormPage({ params }: PageProps) {
                                         disabled={saving}
                                     />
 
-                                    <Input
-                                        label="หมวดหมู่"
-                                        name="category"
-                                        type="text"
-                                        placeholder="หมวดหมู่ของเทมเพลต"
-                                        value={formData.category}
-                                        onChange={handleChange}
-                                        disabled={saving}
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            หมวดหมู่
+                                        </label>
+                                        {isAddingCategory ? (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    placeholder="ชื่อหมวดหมู่ใหม่"
+                                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            handleAddCategory();
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddCategory}
+                                                    className="px-3 py-2 bg-[#007398] text-white text-sm rounded-lg hover:bg-[#005f7a]"
+                                                >
+                                                    เพิ่ม
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsAddingCategory(false);
+                                                        setNewCategoryName("");
+                                                    }}
+                                                    className="px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+                                                >
+                                                    ยกเลิก
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <select
+                                                    name="category"
+                                                    value={formData.category}
+                                                    onChange={handleChange}
+                                                    disabled={saving}
+                                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#007398] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                >
+                                                    <option value="">เลือกหมวดหมู่</option>
+                                                    {categoryOptions.map((opt) => (
+                                                        <option key={opt.value} value={opt.value}>
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsAddingCategory(true)}
+                                                    className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+                                                    title="เพิ่มหมวดหมู่ใหม่"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    ใหม่
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <Input
                                         label="กลุ่ม"
