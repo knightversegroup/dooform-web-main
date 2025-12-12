@@ -101,7 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAccessToken(data.data.access_token);
       setRefreshToken(data.data.refresh_token);
 
-      router.push('/');
+      router.push('/templates');
     } catch (error) {
       console.error('Login error:', error);
       throw error;

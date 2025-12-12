@@ -1,36 +1,23 @@
 {
-  "name": "dooform-web-main",
+  "name": "dooform",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@headlessui/react": "^2.2.9",
-    "@mdx-js/loader": "^3.1.1",
-    "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "^16.0.5",
-    "@next/third-parties": "^16.0.8",
-    "@types/mdx": "^2.0.13",
-    "@xyflow/react": "^12.9.3",
-    "firebase": "^12.6.0",
-    "lucide-react": "^0.555.0",
-    "next": "16.0.8",
-    "next-mdx-remote": "^5.0.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @dooform/web dev",
+    "dev:salespage": "pnpm --filter @dooform/salespage dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @dooform/web build",
+    "build:salespage": "pnpm --filter @dooform/salespage build",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.5",
-    "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@10.18.0"
 }

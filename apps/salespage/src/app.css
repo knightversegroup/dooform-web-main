@@ -1,0 +1,183 @@
+@import 'tailwindcss';
+
+:root {
+    color-scheme: light only;
+
+    /* Colors */
+    --background: #ffffff;
+    --foreground: #171717;
+    --primary: #1e3a8a;
+    --primary-hover: #1e40af;
+    --text-default: #3a3a3a;
+    --text-muted: #666666;
+    --border-default: #dddddd;
+    --surface-alt: #f6f6f6;
+
+    /* Layout - Container */
+    --container-max-width: 80rem; /* 1280px */
+
+    /* Layout - Padding (horizontal) */
+    --padding-container-mobile: 1rem; /* 16px - mobile */
+    --padding-container-tablet: 1.5rem; /* 24px - tablet */
+    --padding-container-desktop: 2rem; /* 32px - desktop */
+
+    /* Layout - Section spacing (vertical) */
+    --padding-section-mobile: 2rem; /* 32px */
+    --padding-section-tablet: 3rem; /* 48px */
+    --padding-section-desktop: 4rem; /* 64px */
+
+    /* Spacing scale */
+    --space-xs: 0.25rem; /* 4px */
+    --space-sm: 0.5rem; /* 8px */
+    --space-md: 1rem; /* 16px */
+    --space-lg: 1.5rem; /* 24px */
+    --space-xl: 2rem; /* 32px */
+    --space-2xl: 3rem; /* 48px */
+    --space-3xl: 4rem; /* 64px */
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-text-default: var(--text-default);
+    --color-text-muted: var(--text-muted);
+    --color-border-default: var(--border-default);
+    --color-surface-alt: var(--surface-alt);
+}
+
+body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'IBM Plex Sans Thai', Arial, Helvetica, sans-serif;
+}
+
+/* ========================================
+   Layout Utility Classes
+   ======================================== */
+
+/* Container - centered with max-width and responsive padding */
+.container-main {
+    width: 100%;
+    max-width: var(--container-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--padding-container-mobile);
+    padding-right: var(--padding-container-mobile);
+}
+
+@media (min-width: 640px) {
+    .container-main {
+        padding-left: var(--padding-container-tablet);
+        padding-right: var(--padding-container-tablet);
+    }
+}
+
+@media (min-width: 1024px) {
+    .container-main {
+        padding-left: var(--padding-container-desktop);
+        padding-right: var(--padding-container-desktop);
+    }
+}
+
+/* Section padding - vertical spacing for major sections */
+.section-padding {
+    padding-top: var(--padding-section-mobile);
+    padding-bottom: var(--padding-section-mobile);
+}
+
+@media (min-width: 640px) {
+    .section-padding {
+        padding-top: var(--padding-section-tablet);
+        padding-bottom: var(--padding-section-tablet);
+    }
+}
+
+@media (min-width: 1024px) {
+    .section-padding {
+        padding-top: var(--padding-section-desktop);
+        padding-bottom: var(--padding-section-desktop);
+    }
+}
+
+/* Small section padding - for footer, smaller sections */
+.section-padding-sm {
+    padding-top: var(--space-md);
+    padding-bottom: var(--space-md);
+}
+
+@media (min-width: 640px) {
+    .section-padding-sm {
+        padding-top: var(--space-lg);
+        padding-bottom: var(--space-lg);
+    }
+}
+
+/* ========================================
+   Typography Utility Classes
+   ======================================== */
+
+/* Heading 1 - Hero/Banner main title */
+.text-h1 {
+    font-size: 2.25rem; /* 36px */
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+    .text-h1 {
+        font-size: 3rem; /* 48px */
+    }
+}
+
+/* Heading 2 - Section titles */
+.text-h2 {
+    font-size: 1.875rem; /* 30px */
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+    .text-h2 {
+        font-size: 2.25rem; /* 36px */
+    }
+}
+
+/* Heading 3 - Card titles, subsection titles */
+.text-h3 {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+/* Heading 4 - Small titles */
+.text-h4 {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+/* Body Large - Lead paragraphs, intro text */
+.text-body-lg {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.6;
+}
+
+/* Body - Default paragraph text */
+.text-body {
+    font-size: 1rem; /* 16px */
+    line-height: 1.6;
+}
+
+/* Body Small - Secondary text, descriptions */
+.text-body-sm {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+}
+
+/* Caption - Small labels, hints, footnotes */
+.text-caption {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.4;
+}
