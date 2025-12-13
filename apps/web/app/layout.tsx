@@ -5,8 +5,6 @@ import {
   Prompt,
 } from "next/font/google";
 import "./globals.css";
-import Navbar from "./components/Layout/Navbar";
-import Footer from "./components/Layout/Footer";
 import { AuthProvider } from "@/lib/auth/context";
 import { CookieConsentProvider } from "@/lib/cookie/context";
 import { CookieConsentBanner, Analytics } from "./components/CookieConsent";
@@ -305,9 +303,7 @@ export default function RootLayout({
         <CookieConsentProvider>
           <Analytics />
           <AuthProvider>
-            <Navbar />
             {children}
-            <Footer />
           </AuthProvider>
           <CookieConsentBanner />
         </CookieConsentProvider>
