@@ -158,7 +158,7 @@ export default function TemplateGroupList() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#f1f1f1] rounded-3xl overflow-hidden font-sans">
+    <div className="min-h-screen rounded-3xl overflow-hidden font-sans">
       {/* Hero Section - Recent Documents */}
       <section className="bg-[#d5d5d5] rounded-t-3xl px-8 pt-10 pb-8">
         {/* Header with search */}
