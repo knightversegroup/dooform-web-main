@@ -60,21 +60,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Desktop layout */}
-      <div className="hidden lg:flex min-h-screen bg-[#f5f5f7] flex-col">
-        {/* Full-width Navbar at top */}
+      <div className="hidden lg:block min-h-screen bg-[#f5f5f7]">
+        {/* Fixed Navbar at top */}
         <Navbar />
 
-        {/* Container for sidebar + content */}
-        <div className="flex-1 flex">
-          {/* Sidebar */}
-          <Sidebar />
+        {/* Fixed Sidebar */}
+        <Sidebar />
 
-          {/* Main content area */}
-          <main className="flex-1 ml-60 flex flex-col">
-            {/* Content */}
-            <div className="flex-1 p-6">{children}</div>
-          </main>
-        </div>
+        {/* Main content area - offset by navbar height (h-14) and sidebar width (w-60) */}
+        <main className="pt-14 pl-60 min-h-screen">
+          <div className="p-6">{children}</div>
+        </main>
       </div>
     </>
   );
