@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   History,
@@ -10,8 +9,6 @@ import {
   Sliders,
   Filter,
   FileType,
-  Menu,
-  X,
   ChevronRight,
   Search,
   Home,
@@ -70,7 +67,6 @@ const settingsNav: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
@@ -95,7 +91,6 @@ export default function Sidebar() {
   const NavLink = ({ item }: { item: NavItem }) => (
     <Link
       href={item.href}
-      onClick={() => setIsMobileOpen(false)}
       className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors font-sans ${
         isActive(item.href)
           ? "bg-neutral-200 text-neutral-900"
@@ -154,7 +149,6 @@ export default function Sidebar() {
   const SubNavLink = ({ item }: { item: NavItem }) => (
     <Link
       href={item.href}
-      onClick={() => setIsMobileOpen(false)}
       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-sans transition-colors ${
         isActive(item.href)
           ? "text-neutral-900 bg-neutral-100"
@@ -228,47 +222,8 @@ export default function Sidebar() {
   );
 
   return (
-    <>
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-12 bg-white border-b border-neutral-200">
-        <div className="flex items-center justify-between h-full px-4">
-          <Link href="/templates">
-            <Image src="/logo.svg" alt="Dooform" width={80} height={16} />
-          </Link>
-          <button
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            {isMobileOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/20"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside
-        className={`lg:hidden fixed top-0 left-0 z-50 h-full w-60 bg-white shadow-xl transform transition-transform duration-200 ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <SidebarContent />
-      </aside>
-
-      {/* Desktop Sidebar - positioned below navbar (h-14 = 56px) */}
-      <aside className="hidden lg:block lg:fixed lg:top-14 lg:bottom-0 lg:left-0 lg:w-60 bg-white border-r border-neutral-200">
-        <SidebarContent />
-      </aside>
-    </>
+    <aside className="fixed top-14 bottom-0 left-0 w-60 bg-white border-r border-neutral-200">
+      <SidebarContent />
+    </aside>
   );
 }
