@@ -19,7 +19,7 @@
     "@xyflow/react": "^12.9.3",
     "firebase": "^12.6.0",
     "lucide-react": "^0.555.0",
-    "next": "16.0.8",
+    "next": "16.0.10",
     "next-mdx-remote": "^5.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
