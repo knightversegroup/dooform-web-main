@@ -515,6 +515,21 @@ export interface StatsTimeSeriesResponse {
   data: TimeSeriesData;
 }
 
+// AI Alias Suggestion Types
+export interface AliasSuggestion {
+  placeholder: string;
+  suggested_alias: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface AliasSuggestionResponse {
+  suggestions: AliasSuggestion[];
+  model: string;
+  provider: string;
+  message: string;
+}
+
 // Filter Types
 export interface FilterOption {
   id: string;

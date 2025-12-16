@@ -47,6 +47,7 @@ import {
   FilterCategoryUpdateRequest,
   FilterOptionCreateRequest,
   FilterOptionUpdateRequest,
+  AliasSuggestionResponse,
 } from './types';
 
 class ApiClient {
@@ -385,6 +386,25 @@ class ApiClient {
     const response = await makeRequest();
     const result = await this.handleResponseWithRetry<{ message: string; field_definitions: Record<string, FieldDefinition> }>(response, makeRequest);
     return result.field_definitions;
+  }
+
+  // AI Alias Suggestion
+
+  async suggestAliases(templateId: string, htmlContent?: string): Promise<AliasSuggestionResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/suggest-aliases`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({
+        html_content: htmlContent || '',
+        use_context: !!htmlContent,
+      }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<AliasSuggestionResponse>(response, makeRequest);
   }
 
   // Document Processing

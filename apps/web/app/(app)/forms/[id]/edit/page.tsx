@@ -21,9 +21,10 @@ import {
     FolderOpen,
     Link as LinkIcon,
     Unlink,
+    Sparkles,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType, FilterCategory } from "@/lib/api/types";
+import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType, FilterCategory, AliasSuggestion } from "@/lib/api/types";
 import { detectMergeableGroups, createMergedFieldDefinition } from "@/lib/utils/fieldTypes";
 import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
@@ -113,6 +114,11 @@ export default function EditFormPage({ params }: PageProps) {
         group: "",
     });
     const [aliases, setAliases] = useState<Record<string, string>>({});
+
+    // AI Alias suggestions state
+    const [suggestingAliases, setSuggestingAliases] = useState(false);
+    const [aliasSuggestions, setAliasSuggestions] = useState<AliasSuggestion[]>([]);
+    const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
     // Redirect to login if not authenticated
     useEffect(() => {
@@ -341,6 +347,47 @@ export default function EditFormPage({ params }: PageProps) {
             ...prev,
             [placeholder]: alias,
         }));
+        setSuccess(false);
+    };
+
+    // AI Alias suggestion handler
+    const handleSuggestAliases = async () => {
+        try {
+            setSuggestingAliases(true);
+            setSuggestionError(null);
+            setAliasSuggestions([]);
+
+            const result = await apiClient.suggestAliases(templateId);
+            setAliasSuggestions(result.suggestions);
+        } catch (err) {
+            console.error("Failed to suggest aliases:", err);
+            setSuggestionError(
+                err instanceof Error ? err.message : "ไม่สามารถแนะนำชื่อช่องกรอกได้"
+            );
+        } finally {
+            setSuggestingAliases(false);
+        }
+    };
+
+    // Apply a single alias suggestion
+    const handleApplySuggestion = (placeholder: string, suggestedAlias: string) => {
+        setAliases((prev) => ({
+            ...prev,
+            [placeholder]: suggestedAlias,
+        }));
+        // Remove from suggestions after applying
+        setAliasSuggestions((prev) => prev.filter((s) => s.placeholder !== placeholder));
+        setSuccess(false);
+    };
+
+    // Apply all alias suggestions
+    const handleApplyAllSuggestions = () => {
+        const newAliases = { ...aliases };
+        aliasSuggestions.forEach((suggestion) => {
+            newAliases[suggestion.placeholder] = suggestion.suggested_alias;
+        });
+        setAliases(newAliases);
+        setAliasSuggestions([]);
         setSuccess(false);
     };
 
@@ -1419,12 +1466,111 @@ export default function EditFormPage({ params }: PageProps) {
                             {/* Aliases */}
                             {placeholders.length > 0 && (
                                 <div className="bg-background border border-border-default rounded-lg p-6">
-                                    <h2 className="text-h4 text-foreground mb-4">
-                                        ชื่อช่องกรอกข้อมูล ({placeholders.length} รายการ)
-                                    </h2>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-h4 text-foreground">
+                                            ชื่อช่องกรอกข้อมูล ({placeholders.length} รายการ)
+                                        </h2>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleSuggestAliases}
+                                            disabled={suggestingAliases || saving}
+                                            className="flex items-center gap-2"
+                                        >
+                                            {suggestingAliases ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    กำลังวิเคราะห์...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles className="w-4 h-4" />
+                                                    แนะนำด้วย AI
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                     <p className="text-body-sm text-text-muted mb-4">
-                                        กำหนดชื่อที่แสดงสำหรับแต่ละช่องกรอกข้อมูล
+                                        กำหนดชื่อที่แสดงสำหรับแต่ละช่องกรอกข้อมูล หรือใช้ AI ช่วยแนะนำ
                                     </p>
+
+                                    {/* AI Suggestion Error */}
+                                    {suggestionError && (
+                                        <div className="flex items-center gap-2 p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+                                            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                            <p className="text-body-sm text-red-700">{suggestionError}</p>
+                                        </div>
+                                    )}
+
+                                    {/* AI Suggestions Panel */}
+                                    {aliasSuggestions.length > 0 && (
+                                        <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Sparkles className="w-4 h-4 text-purple-600" />
+                                                    <span className="text-body-sm font-medium text-purple-800">
+                                                        AI แนะนำ {aliasSuggestions.length} รายการ
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApplyAllSuggestions}
+                                                        className="text-body-sm text-purple-700 hover:text-purple-900 underline"
+                                                    >
+                                                        ใช้ทั้งหมด
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAliasSuggestions([])}
+                                                        className="text-body-sm text-gray-500 hover:text-gray-700"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {aliasSuggestions.map((suggestion, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between p-2 bg-white rounded border border-purple-100"
+                                                    >
+                                                        <div className="flex-1 min-w-0 mr-3">
+                                                            <p className="text-body-sm font-medium text-foreground truncate">
+                                                                {suggestion.suggested_alias}
+                                                            </p>
+                                                            <p className="text-caption text-text-muted font-mono truncate">
+                                                                {suggestion.placeholder}
+                                                            </p>
+                                                            {suggestion.reasoning && (
+                                                                <p className="text-caption text-purple-600 mt-0.5 truncate">
+                                                                    {suggestion.reasoning}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                            <span className="text-caption text-purple-600">
+                                                                {Math.round(suggestion.confidence * 100)}%
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleApplySuggestion(
+                                                                        suggestion.placeholder,
+                                                                        suggestion.suggested_alias
+                                                                    )
+                                                                }
+                                                                className="px-2 py-1 text-caption bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                                                            >
+                                                                ใช้
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="space-y-3 max-h-80 overflow-y-auto">
                                         {placeholders.map((placeholder, idx) => (
