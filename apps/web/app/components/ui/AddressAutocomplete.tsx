@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MapPin, Loader2, X } from "lucide-react";
 import { addressService, AdministrativeBoundary, AddressSelection } from "@/lib/api/addressService";
+
+// Search level determines what data to fetch and display
+export type AddressSearchLevel = 'full' | 'province' | 'district' | 'subdistrict';
+
+// Deduplicated result item for display
+interface DeduplicatedResult {
+  key: string;
+  displayPrimary: string;      // Main display text (Thai)
+  displaySecondary: string;    // Secondary text (English or parent info)
+  original: AdministrativeBoundary;
+}
 
 interface AddressAutocompleteProps {
   value: string;
@@ -11,16 +22,27 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  searchLevel?: AddressSearchLevel; // What level to search for
 }
 
 export function AddressAutocomplete({
   value,
   onChange,
   onAddressSelect,
-  placeholder = "พิมพ์ชื่อตำบล อำเภอ หรือจังหวัด...",
+  placeholder,
   disabled,
   className = "",
+  searchLevel = 'full',
 }: AddressAutocompleteProps) {
+  // Default placeholder based on search level
+  const defaultPlaceholder = {
+    'full': "พิมพ์ชื่อตำบล อำเภอ หรือจังหวัด...",
+    'province': "พิมพ์ชื่อจังหวัด...",
+    'district': "พิมพ์ชื่ออำเภอ/เขต...",
+    'subdistrict': "พิมพ์ชื่อตำบล/แขวง...",
+  }[searchLevel];
+
+  const actualPlaceholder = placeholder || defaultPlaceholder;
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<AdministrativeBoundary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +50,58 @@ export function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Deduplicate results based on search level
+  const deduplicatedResults = useMemo((): DeduplicatedResult[] => {
+    if (!results.length) return [];
+
+    const seen = new Map<string, DeduplicatedResult>();
+
+    results.forEach((item) => {
+      let key: string;
+      let displayPrimary: string;
+      let displaySecondary: string;
+
+      switch (searchLevel) {
+        case 'province':
+          // Deduplicate by province only
+          key = item.admin_id1;
+          displayPrimary = item.name1;
+          displaySecondary = item.name_eng1;
+          break;
+        case 'district':
+          // Deduplicate by province + district
+          key = `${item.admin_id1}-${item.admin_id2}`;
+          displayPrimary = item.name2;
+          displaySecondary = `${item.name_eng2} (${item.name1})`;
+          break;
+        case 'subdistrict':
+          // Deduplicate by province + district + subdistrict
+          key = `${item.admin_id1}-${item.admin_id2}-${item.admin_id3}`;
+          displayPrimary = item.name3;
+          displaySecondary = `${item.name_eng3} (${item.name2}, ${item.name1})`;
+          break;
+        case 'full':
+        default:
+          // No deduplication for full address
+          key = `${item.objectid}`;
+          displayPrimary = `${item.name3} ${item.name2} ${item.name1}`;
+          displaySecondary = `${item.name_eng3}, ${item.name_eng2}, ${item.name_eng1}`;
+          break;
+      }
+
+      if (!seen.has(key)) {
+        seen.set(key, {
+          key,
+          displayPrimary,
+          displaySecondary,
+          original: item,
+        });
+      }
+    });
+
+    return Array.from(seen.values());
+  }, [results, searchLevel]);
 
   // Debounced search
   const searchAddress = useCallback(async (query: string) => {
@@ -71,10 +145,30 @@ export function AddressAutocomplete({
     }, 300);
   };
 
-  // Handle selecting an address
-  const handleSelect = (boundary: AdministrativeBoundary) => {
+  // Handle selecting an address based on search level
+  const handleSelect = (result: DeduplicatedResult) => {
+    const boundary = result.original;
     const selection = addressService.toAddressSelection(boundary);
-    onChange(selection.fullAddressEn);
+
+    // Set the input value based on search level
+    let selectedValue: string;
+    switch (searchLevel) {
+      case 'province':
+        selectedValue = boundary.name_eng1;
+        break;
+      case 'district':
+        selectedValue = boundary.name_eng2;
+        break;
+      case 'subdistrict':
+        selectedValue = boundary.name_eng3;
+        break;
+      case 'full':
+      default:
+        selectedValue = selection.fullAddressEn;
+        break;
+    }
+
+    onChange(selectedValue);
     onAddressSelect?.(selection);
     setIsOpen(false);
     setResults([]);
@@ -82,12 +176,12 @@ export function AddressAutocomplete({
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || results.length === 0) return;
+    if (!isOpen || deduplicatedResults.length === 0) return;
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+        setSelectedIndex((prev) => (prev < deduplicatedResults.length - 1 ? prev + 1 : prev));
         break;
       case "ArrowUp":
         e.preventDefault();
@@ -95,8 +189,8 @@ export function AddressAutocomplete({
         break;
       case "Enter":
         e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < results.length) {
-          handleSelect(results[selectedIndex]);
+        if (selectedIndex >= 0 && selectedIndex < deduplicatedResults.length) {
+          handleSelect(deduplicatedResults[selectedIndex]);
         }
         break;
       case "Escape":
@@ -145,7 +239,7 @@ export function AddressAutocomplete({
           type="text"
           value={value}
           onChange={handleInputChange}
-          onFocus={() => value.length >= 1 && results.length > 0 && setIsOpen(true)}
+          onFocus={() => value.length >= 1 && deduplicatedResults.length > 0 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
@@ -167,11 +261,11 @@ export function AddressAutocomplete({
       </div>
 
       {/* Dropdown */}
-      {isOpen && results.length > 0 && (
+      {isOpen && deduplicatedResults.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-background border border-border-default rounded-xl shadow-lg max-h-64 overflow-y-auto">
-          {results.map((result, index) => (
+          {deduplicatedResults.map((result, index) => (
             <button
-              key={`${result.objectid}-${index}`}
+              key={result.key}
               type="button"
               onClick={() => handleSelect(result)}
               className={`w-full px-4 py-3 text-left hover:bg-surface-alt transition-colors border-b border-border-default last:border-b-0 ${
@@ -182,10 +276,10 @@ export function AddressAutocomplete({
                 <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">
-                    {result.name_eng3 || ""}, {result.name_eng2 || ""}, {result.name_eng1 || ""}
+                    {result.displaySecondary}
                   </p>
                   <p className="text-xs text-text-muted">
-                    {result.name3 || ""} {result.name2 || ""} {result.name1 || ""}
+                    {result.displayPrimary}
                   </p>
                 </div>
               </div>
@@ -195,7 +289,7 @@ export function AddressAutocomplete({
       )}
 
       {/* No results message */}
-      {isOpen && value.length >= 1 && results.length === 0 && !loading && (
+      {isOpen && value.length >= 1 && deduplicatedResults.length === 0 && !loading && (
         <div className="absolute z-50 w-full mt-1 bg-background border border-border-default rounded-xl shadow-lg p-4">
           <p className="text-sm text-text-muted text-center">ไม่พบข้อมูลที่ตรงกัน</p>
         </div>

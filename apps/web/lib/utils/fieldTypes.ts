@@ -282,6 +282,8 @@ export const DATA_TYPE_LABELS: Record<DataType, string> = {
     number: 'ตัวเลข',
     address: 'ที่อยู่',
     province: 'จังหวัด',
+    district: 'อำเภอ/เขต',
+    subdistrict: 'ตำบล/แขวง',
     country: 'ประเทศ',
     name_prefix: 'คำนำหน้าชื่อ',
     name: 'ชื่อ',
@@ -366,6 +368,23 @@ export function detectFieldType(placeholder: string): FieldDefinition {
         definition.dataType = 'province';
         definition.inputType = 'select';
         definition.validation = { options: PROVINCE_OPTIONS };
+        return definition;
+    }
+
+    // District patterns (amphoe/เขต - more specific than address)
+    if (lowerKey.includes('district') || lowerKey.includes('amphoe') || lowerKey.includes('อำเภอ') || lowerKey.includes('เขต')) {
+        // Make sure it's not "subdistrict"
+        if (!lowerKey.includes('subdistrict') && !lowerKey.includes('tambon') && !lowerKey.includes('ตำบล') && !lowerKey.includes('แขวง')) {
+            definition.dataType = 'district';
+            definition.inputType = 'text';
+            return definition;
+        }
+    }
+
+    // Subdistrict patterns (tambon/ตำบล/แขวง)
+    if (lowerKey.includes('subdistrict') || lowerKey.includes('tambon') || lowerKey.includes('ตำบล') || lowerKey.includes('แขวง')) {
+        definition.dataType = 'subdistrict';
+        definition.inputType = 'text';
         return definition;
     }
 

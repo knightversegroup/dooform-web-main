@@ -17,6 +17,8 @@ export type DataType =
   | 'number'
   | 'address'
   | 'province'
+  | 'district'
+  | 'subdistrict'
   | 'country'
   | 'name_prefix'
   | 'name'

@@ -37,7 +37,7 @@ import {
     parseDateToISO,
     getDatePlaceholder,
 } from "@/lib/utils/fieldTypes";
-import { AddressAutocomplete } from "./AddressAutocomplete";
+import { AddressAutocomplete, AddressSearchLevel } from "./AddressAutocomplete";
 import { AddressSelection } from "@/lib/api/addressService";
 
 interface SmartInputProps {
@@ -286,7 +286,26 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
             }
 
             // Address input with autocomplete and text case format
-            if (dataType === 'address' || dataType === 'province') {
+            if (dataType === 'address' || dataType === 'province' || dataType === 'district' || dataType === 'subdistrict') {
+                // Determine search level based on dataType and placeholder name
+                let searchLevel: AddressSearchLevel = 'full';
+                const placeholderLower = definition.placeholder.toLowerCase();
+
+                if (dataType === 'province') {
+                    searchLevel = 'province';
+                } else if (dataType === 'district' || placeholderLower.includes('district') || placeholderLower.includes('amphoe') || placeholderLower.includes('อำเภอ') || placeholderLower.includes('เขต')) {
+                    searchLevel = 'district';
+                } else if (dataType === 'subdistrict' || placeholderLower.includes('subdistrict') || placeholderLower.includes('tambon') || placeholderLower.includes('ตำบล') || placeholderLower.includes('แขวง')) {
+                    searchLevel = 'subdistrict';
+                }
+
+                const searchLevelPlaceholders: Record<AddressSearchLevel, string> = {
+                    'full': 'พิมพ์ชื่อตำบล อำเภอ หรือจังหวัด...',
+                    'province': 'พิมพ์ชื่อจังหวัด...',
+                    'district': 'พิมพ์ชื่ออำเภอ/เขต...',
+                    'subdistrict': 'พิมพ์ชื่อตำบล/แขวง...',
+                };
+
                 const handleAddressChange = (newValue: string) => {
                     const formattedValue = formatTextCase(newValue, textCaseFormat);
                     handleChange(formattedValue);
@@ -310,7 +329,8 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                                 value={value}
                                 onChange={handleAddressChange}
                                 onAddressSelect={handleAddressSelectWithFormat}
-                                placeholder={dataType === 'province' ? 'พิมพ์ชื่อจังหวัด...' : 'พิมพ์ชื่อตำบล อำเภอ หรือจังหวัด...'}
+                                placeholder={searchLevelPlaceholders[searchLevel]}
+                                searchLevel={searchLevel}
                                 disabled={disabled}
                             />
                         </div>
