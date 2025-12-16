@@ -3,13 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, HelpCircle, User, LogOut } from "lucide-react";
+import { Plus, HelpCircle, User, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
+import { useSidebar } from "./SidebarContext";
 
 const DEFAULT_PROFILE_IMAGE = "/profile_default.webp";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { isCollapsed, toggleCollapse } = useSidebar();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -29,8 +31,21 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutral-200">
       <div className="flex items-center justify-between h-14 px-4">
-        {/* Left side - Logo */}
-        <div className="flex items-center">
+        {/* Left side - Sidebar toggle and Logo */}
+        <div className="flex items-center gap-2">
+          {/* Sidebar Toggle Button */}
+          <button
+            onClick={toggleCollapse}
+            className="flex items-center justify-center w-8 h-8 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? (
+              <PanelLeft className="w-5 h-5" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5" />
+            )}
+          </button>
+
           <Link href="/templates" className="flex items-center">
             <Image
               src="/logo.svg"

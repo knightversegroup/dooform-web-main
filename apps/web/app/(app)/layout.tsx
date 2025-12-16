@@ -4,8 +4,43 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import Sidebar from "@/app/components/Layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/app/components/Layout/SidebarContext";
 import Navbar from "@/app/components/Layout/Navbar";
 import { Loader2 } from "lucide-react";
+
+// Main content component that uses sidebar width
+function MainContent({ children }: { children: React.ReactNode }) {
+  const { width, isResizing } = useSidebar();
+
+  return (
+    <main
+      className={`pt-14 min-h-screen ${
+        isResizing ? "" : "transition-[padding-left] duration-150 ease-out"
+      }`}
+      style={{ paddingLeft: `${width}px` }}
+    >
+      <div className="p-6">{children}</div>
+    </main>
+  );
+}
+
+// Desktop layout with sidebar provider
+function DesktopLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <div className="hidden lg:block min-h-screen bg-[#f5f5f7]">
+        {/* Fixed Navbar at top */}
+        <Navbar />
+
+        {/* Fixed Sidebar */}
+        <Sidebar />
+
+        {/* Main content area - offset by navbar height and dynamic sidebar width */}
+        <MainContent>{children}</MainContent>
+      </div>
+    </SidebarProvider>
+  );
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,18 +95,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Desktop layout */}
-      <div className="hidden lg:block min-h-screen bg-[#f5f5f7]">
-        {/* Fixed Navbar at top */}
-        <Navbar />
-
-        {/* Fixed Sidebar */}
-        <Sidebar />
-
-        {/* Main content area - offset by navbar height (h-14) and sidebar width (w-60) */}
-        <main className="pt-14 pl-60 min-h-screen">
-          <div className="p-6">{children}</div>
-        </main>
-      </div>
+      <DesktopLayout>{children}</DesktopLayout>
     </>
   );
 }

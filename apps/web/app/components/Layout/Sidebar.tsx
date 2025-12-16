@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,7 +16,9 @@ import {
   Users,
   FolderOpen,
   LucideIcon,
+  GripVertical,
 } from "lucide-react";
+import { useSidebar } from "./SidebarContext";
 
 // ============================================================================
 // Types
@@ -102,7 +104,20 @@ function isActivePath(pathname: string, href: string): boolean {
 // Components
 // ============================================================================
 
-function SearchButton() {
+function SearchButton({ isCollapsed }: { isCollapsed: boolean }) {
+  if (isCollapsed) {
+    return (
+      <div className="px-2 py-4 flex justify-center">
+        <button
+          className="flex items-center justify-center w-10 h-10 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+          title="ค้นหา... (⌘K)"
+        >
+          <Search className="w-4 h-4 opacity-50" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-4">
       <button className="w-full flex items-center gap-2 px-3 h-8 rounded-lg text-sm text-neutral-500 bg-neutral-100 ring-1 ring-neutral-200 hover:bg-neutral-150 transition-colors">
@@ -116,20 +131,31 @@ function SearchButton() {
   );
 }
 
-function NavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
+function NavLink({
+  item,
+  isActive,
+  isCollapsed,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  isCollapsed: boolean;
+}) {
   const Icon = item.icon;
 
   return (
     <Link
       href={item.href}
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors font-sans ${
+      className={`group flex items-center rounded-lg text-sm font-medium transition-colors font-sans ${
+        isCollapsed ? "justify-center w-10 h-10" : "gap-3 px-3 py-2"
+      } ${
         isActive
           ? "bg-neutral-200 text-neutral-900"
           : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
       }`}
+      title={isCollapsed ? item.label : undefined}
     >
       <Icon className="w-4 h-4 opacity-50 shrink-0" />
-      <span className="truncate leading-none">{item.label}</span>
+      {!isCollapsed && <span className="truncate leading-none">{item.label}</span>}
     </Link>
   );
 }
@@ -152,25 +178,30 @@ function SubNavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
 function WorkspaceLink({
   workspace,
   isActive,
+  isCollapsed,
 }: {
   workspace: Workspace;
   isActive: boolean;
+  isCollapsed: boolean;
 }) {
   return (
     <Link
       href={workspace.href}
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors font-sans ${
+      className={`group flex items-center rounded-lg text-sm font-medium transition-colors font-sans ${
+        isCollapsed ? "justify-center w-10 h-10" : "gap-3 px-3 py-2"
+      } ${
         isActive
           ? "bg-neutral-200 text-neutral-900"
           : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
       }`}
+      title={isCollapsed ? workspace.name : undefined}
     >
       <span
         className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold text-white shrink-0 ${workspace.color}`}
       >
         {workspace.name.charAt(0).toUpperCase()}
       </span>
-      <span className="truncate leading-none">{workspace.name}</span>
+      {!isCollapsed && <span className="truncate leading-none">{workspace.name}</span>}
     </Link>
   );
 }
@@ -180,13 +211,28 @@ function ExpandableSection({
   isExpanded,
   onToggle,
   pathname,
+  isCollapsed,
 }: {
   section: NavSection;
   isExpanded: boolean;
   onToggle: () => void;
   pathname: string;
+  isCollapsed: boolean;
 }) {
   const Icon = section.icon;
+
+  // In collapsed mode, just show the icon
+  if (isCollapsed) {
+    return (
+      <button
+        onClick={onToggle}
+        className="group flex items-center justify-center w-10 h-10 rounded-lg text-sm font-sans font-medium transition-colors text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+        title={section.label}
+      >
+        <Icon className="w-4 h-4 opacity-50 shrink-0" />
+      </button>
+    );
+  }
 
   return (
     <div>
@@ -230,11 +276,48 @@ function ExpandableSection({
 }
 
 // ============================================================================
+// Resize Handle Component
+// ============================================================================
+
+function ResizeHandle({
+  onMouseDown,
+  isResizing,
+}: {
+  onMouseDown: (e: React.MouseEvent) => void;
+  isResizing: boolean;
+}) {
+  return (
+    <div
+      className={`absolute top-0 bottom-0 right-0 w-1 cursor-col-resize group hover:bg-blue-500/50 transition-colors ${
+        isResizing ? "bg-blue-500/50" : ""
+      }`}
+      onMouseDown={onMouseDown}
+    >
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 w-4 h-8 flex items-center justify-center rounded bg-white border border-neutral-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity ${
+          isResizing ? "opacity-100" : ""
+        }`}
+      >
+        <GripVertical className="w-3 h-3 text-neutral-400" />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const {
+    width,
+    isCollapsed,
+    isResizing,
+    setWidth,
+    startResizing,
+    stopResizing,
+  } = useSidebar();
 
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -247,19 +330,68 @@ export default function Sidebar() {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  return (
-    <aside className="fixed top-14 bottom-0 left-0 w-60 bg-white border-r border-neutral-200">
-      <div className="flex flex-col h-full bg-white font-sans">
-        <SearchButton />
+  // Handle mouse move for resizing
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = e.clientX;
+      setWidth(newWidth);
+    },
+    [isResizing, setWidth]
+  );
 
-        <nav className="flex-1 px-3.5 overflow-y-auto pb-4">
-          <ul className="flex flex-col gap-0.5">
+  // Handle mouse up to stop resizing
+  const handleMouseUp = useCallback(() => {
+    stopResizing();
+  }, [stopResizing]);
+
+  // Add/remove event listeners for resize
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, handleMouseMove, handleMouseUp]);
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startResizing();
+  };
+
+  return (
+    <aside
+      className="fixed top-14 bottom-0 left-0 bg-white border-r border-neutral-200 transition-[width] duration-150 ease-out"
+      style={{ width: `${width}px` }}
+    >
+      <div className="flex flex-col h-full bg-white font-sans relative">
+        <SearchButton isCollapsed={isCollapsed} />
+
+        <nav
+          className={`flex-1 overflow-y-auto pb-4 ${
+            isCollapsed ? "px-2" : "px-3.5"
+          }`}
+        >
+          <ul
+            className={`flex flex-col gap-0.5 ${
+              isCollapsed ? "items-center" : ""
+            }`}
+          >
             {/* Main Navigation */}
             {MAIN_NAV.map((item) => (
               <li key={item.href}>
                 <NavLink
                   item={item}
                   isActive={isActivePath(pathname, item.href)}
+                  isCollapsed={isCollapsed}
                 />
               </li>
             ))}
@@ -272,16 +404,24 @@ export default function Sidebar() {
                   isExpanded={expandedSections[section.key]}
                   onToggle={() => toggleSection(section.key)}
                   pathname={pathname}
+                  isCollapsed={isCollapsed}
                 />
               </li>
             ))}
 
             {/* Workspace Divider */}
-            <li className="px-3 pt-4 pb-2">
-              <div className="text-sm font-medium text-neutral-400">
-                Workspace
-              </div>
-            </li>
+            {!isCollapsed && (
+              <li className="px-3 pt-4 pb-2">
+                <div className="text-sm font-medium text-neutral-400">
+                  Workspace
+                </div>
+              </li>
+            )}
+            {isCollapsed && (
+              <li className="pt-4 pb-2">
+                <div className="w-6 h-px bg-neutral-200" />
+              </li>
+            )}
 
             {/* Workspace List */}
             {WORKSPACES.map((workspace) => (
@@ -289,6 +429,7 @@ export default function Sidebar() {
                 <WorkspaceLink
                   workspace={workspace}
                   isActive={isActivePath(pathname, workspace.href)}
+                  isCollapsed={isCollapsed}
                 />
               </li>
             ))}
@@ -299,16 +440,24 @@ export default function Sidebar() {
                 <NavLink
                   item={item}
                   isActive={isActivePath(pathname, item.href)}
+                  isCollapsed={isCollapsed}
                 />
               </li>
             ))}
 
             {/* Settings Divider */}
-            <li className="px-3 pt-4 pb-2">
-              <div className="text-sm font-medium text-neutral-400">
-                ตั้งค่า
-              </div>
-            </li>
+            {!isCollapsed && (
+              <li className="px-3 pt-4 pb-2">
+                <div className="text-sm font-medium text-neutral-400">
+                  ตั้งค่า
+                </div>
+              </li>
+            )}
+            {isCollapsed && (
+              <li className="pt-4 pb-2">
+                <div className="w-6 h-px bg-neutral-200" />
+              </li>
+            )}
 
             {/* Settings Section */}
             <li>
@@ -317,10 +466,19 @@ export default function Sidebar() {
                 isExpanded={expandedSections[SETTINGS_SECTION.key]}
                 onToggle={() => toggleSection(SETTINGS_SECTION.key)}
                 pathname={pathname}
+                isCollapsed={isCollapsed}
               />
             </li>
           </ul>
         </nav>
+
+        {/* Resize Handle - only show when not collapsed */}
+        {!isCollapsed && (
+          <ResizeHandle
+            onMouseDown={handleResizeMouseDown}
+            isResizing={isResizing}
+          />
+        )}
       </div>
     </aside>
   );
