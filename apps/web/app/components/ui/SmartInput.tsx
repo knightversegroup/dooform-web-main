@@ -286,15 +286,21 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
             }
 
             // Address input with autocomplete and text case format
-            if (dataType === 'address' || dataType === 'province' || dataType === 'district' || dataType === 'subdistrict') {
+            // Check BOTH dataType AND placeholder pattern to handle cases where dataType hasn't been updated yet
+            const placeholderLower = definition.placeholder.toLowerCase();
+            const isAddressField = dataType === 'address' || dataType === 'province' || dataType === 'district' || dataType === 'subdistrict' ||
+                placeholderLower.includes('province') || placeholderLower.includes('_prov') ||
+                placeholderLower.includes('district') || placeholderLower.includes('amphoe') ||
+                placeholderLower.includes('subdistrict') || placeholderLower.includes('sub_district') || placeholderLower.includes('tambon');
+
+            if (isAddressField) {
                 // Determine search level based on dataType and placeholder name
                 let searchLevel: AddressSearchLevel = 'full';
-                const placeholderLower = definition.placeholder.toLowerCase();
 
                 // Check subdistrict FIRST (before district) to handle sub_district pattern
                 if (dataType === 'subdistrict' || placeholderLower.includes('subdistrict') || placeholderLower.includes('sub_district') || placeholderLower.includes('sub-district') || placeholderLower.includes('tambon') || placeholderLower.includes('ตำบล') || placeholderLower.includes('แขวง')) {
                     searchLevel = 'subdistrict';
-                } else if (dataType === 'province') {
+                } else if (dataType === 'province' || placeholderLower.includes('province') || placeholderLower.includes('_prov')) {
                     searchLevel = 'province';
                 } else if (dataType === 'district' || placeholderLower.includes('district') || placeholderLower.includes('amphoe') || placeholderLower.includes('อำเภอ') || placeholderLower.includes('เขต')) {
                     searchLevel = 'district';
