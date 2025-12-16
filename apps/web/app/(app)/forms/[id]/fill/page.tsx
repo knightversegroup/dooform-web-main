@@ -14,11 +14,13 @@ import {
   Eye,
   Send,
   ChevronRight,
+  ChevronDown,
   Info,
   Sparkles,
   Lock,
   Unlock,
   AlertTriangle,
+  FolderOpen,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { Template, FieldDefinition } from "@/lib/api/types";
@@ -35,6 +37,22 @@ import {
   type DateFormat,
 } from "@/lib/utils/fieldTypes";
 import { AddressSelection } from "@/lib/api/addressService";
+
+// Step definitions
+type FormStep = "fill" | "review" | "download";
+
+interface StepConfig {
+  id: FormStep;
+  number: number;
+  label: string;
+  title: string;
+}
+
+const FORM_STEPS: StepConfig[] = [
+  { id: "fill", number: 1, label: "ส่วนที่ 1", title: "กรอกข้อมูล" },
+  { id: "review", number: 2, label: "ส่วนที่ 2", title: "ตรวจสอบข้อมูล" },
+  { id: "download", number: 3, label: "ส่วนที่ 3", title: "ดาวน์โหลดไฟล์" },
+];
 
 // Helper to parse placeholders
 const parsePlaceholders = (placeholdersJson: string): string[] => {
@@ -104,6 +122,12 @@ export default function FillFormPage({ params }: PageProps) {
   // Form data state
   const [formData, setFormData] = useState<Record<string, string>>({});
 
+  // Step state
+  const [currentStep, setCurrentStep] = useState<FormStep>("fill");
+  const [selectedFileType, setSelectedFileType] = useState<"docx" | "pdf">(
+    "pdf",
+  );
+
   // Field definitions
   const [fieldDefinitions, setFieldDefinitions] = useState<
     Record<string, FieldDefinition>
@@ -134,6 +158,13 @@ export default function FillFormPage({ params }: PageProps) {
     if (totalFieldsCount === 0) return 0;
     return Math.round((filledFieldsCount / totalFieldsCount) * 100);
   }, [filledFieldsCount, totalFieldsCount]);
+
+  // Get current step index
+  const currentStepIndex = useMemo(() => {
+    return FORM_STEPS.findIndex((step) => step.id === currentStep);
+  }, [currentStep]);
+
+  const currentStepConfig = FORM_STEPS[currentStepIndex];
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -440,8 +471,18 @@ export default function FillFormPage({ params }: PageProps) {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle navigation to review step
+  const handleGoToReview = () => {
+    setCurrentStep("review");
+  };
+
+  // Handle going back to fill step
+  const handleGoToFill = () => {
+    setCurrentStep("fill");
+  };
+
+  // Handle confirmation and document processing
+  const handleConfirmAndProcess = async () => {
     setError(null);
     setSuccess(null);
 
@@ -488,6 +529,9 @@ export default function FillFormPage({ params }: PageProps) {
         downloadUrl: response.download_url,
         downloadPdfUrl: response.download_pdf_url,
       });
+
+      // Move to download step
+      setCurrentStep("download");
     } catch (err) {
       console.error("Failed to process document:", err);
       setError(
@@ -495,6 +539,15 @@ export default function FillFormPage({ params }: PageProps) {
       );
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentStep === "fill") {
+      handleGoToReview();
+    } else if (currentStep === "review") {
+      handleConfirmAndProcess();
     }
   };
 
@@ -563,146 +616,143 @@ export default function FillFormPage({ params }: PageProps) {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <Link
-            href={`/forms/${templateId}`}
-            className="text-sm text-gray-600 hover:text-[#007398]"
+  // Render step-based progress indicator
+  const renderProgressIndicator = () => (
+    <div className="border-b border-[#d9d9d9] flex flex-col gap-[10px] items-start justify-center p-4 w-full">
+      <div className="flex flex-col gap-[2px] items-start w-full">
+        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#171717] text-sm">
+          {currentStepConfig?.label}
+        </p>
+        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-xl text-black">
+          {currentStepConfig?.title}
+        </p>
+      </div>
+      <div className="flex gap-1 items-center w-full">
+        {FORM_STEPS.map((step, idx) => (
+          <div
+            key={step.id}
+            className={`flex-1 h-1 transition-colors duration-300 ${
+              idx <= currentStepIndex ? "bg-[#0b4db7]" : "bg-[#fafafa]"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  // Render form field with Figma styling
+  const renderFormField = (
+    definition: FieldDefinition,
+    disabled: boolean = false,
+  ) => {
+    const key = definition.placeholder.replace(/\{\{|\}\}/g, "");
+    const value = formData[key] || "";
+    const displayLabel = aliases[definition.placeholder] || definition.label || key;
+    const description = definition.description;
+
+    return (
+      <div key={key} className="flex flex-col gap-2 items-start w-full">
+        <div className="flex flex-col gap-[2px] items-start w-full">
+          <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base">
+            {displayLabel}
+          </p>
+          {description && (
+            <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#797979] text-sm">
+              {description}
+            </p>
+          )}
+        </div>
+        <div className="flex items-start w-full">
+          <input
+            type={definition.inputType === "date" ? "date" : "text"}
+            value={value}
+            onChange={(e) => !disabled && handleInputChange(key, e.target.value)}
+            onFocus={() => setActiveField(key)}
+            onBlur={() => setActiveField(null)}
+            disabled={disabled}
+            placeholder={definition.placeholder.replace(/\{\{|\}\}/g, "")}
+            className={`
+              font-['IBM_Plex_Sans_Thai',sans-serif]
+              bg-[#f0f0f0]
+              border-b-2 border-[#b7b7b7] border-l-0 border-r-0 border-t-0
+              px-4 py-[13px]
+              text-base
+              w-full
+              outline-none
+              transition-colors
+              ${disabled ? "opacity-50 text-[#5b5b5b] border-[#5b5b5b]" : "text-[#171717]"}
+              ${!value ? "text-[#a9a9a9]" : ""}
+              focus:border-[#0b4db7]
+            `}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Render review field (disabled with filled value)
+  const renderReviewField = (definition: FieldDefinition) => {
+    const key = definition.placeholder.replace(/\{\{|\}\}/g, "");
+    const value = formData[key] || "";
+    const displayLabel = aliases[definition.placeholder] || definition.label || key;
+    const description = definition.description;
+
+    return (
+      <div key={key} className="flex flex-col gap-2 items-start w-full">
+        <div className="flex flex-col gap-[2px] items-start w-full">
+          <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base">
+            {displayLabel}
+          </p>
+          {description && (
+            <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#797979] text-sm">
+              {description}
+            </p>
+          )}
+        </div>
+        <div className="flex items-start w-full opacity-50">
+          <div
+            className="
+              font-['IBM_Plex_Sans_Thai',sans-serif]
+              bg-[#f0f0f0]
+              border-b-2 border-[#5b5b5b] border-l-0 border-r-0 border-t-0
+              px-4 py-[13px]
+              text-base
+              text-[#5b5b5b]
+              w-full
+              min-h-[48px]
+            "
           >
-            ← กลับไปหน้ารายละเอียด
-          </Link>
-        </div>
-      </div>
-
-      {/* Header Banner */}
-      <div className="relative" style={{ backgroundColor: headerBgColor }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            {/* Template Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-white/70 text-sm">กรอกแบบฟอร์ม</span>
-                <ChevronRight className="w-4 h-4 text-white/50" />
-              </div>
-              <h1 className="text-xl md:text-2xl font-light text-white leading-tight">
-                {template?.display_name || template?.name || template?.filename}
-              </h1>
-
-              {/* Tags */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {template?.is_ai_available && (
-                  <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
-                    <Sparkles className="w-3 h-3" />
-                    AI
-                  </span>
-                )}
-                {template?.tier === "free" ? (
-                  <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
-                    <Unlock className="w-3 h-3" />
-                    Free
-                  </span>
-                ) : (
-                  template?.tier && (
-                    <span className="inline-flex items-center gap-1 text-white/90 text-xs bg-white/20 px-2 py-0.5 rounded">
-                      <Lock className="w-3 h-3" />
-                      {template.tier}
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Progress Stats */}
-            <div className="hidden lg:flex items-center gap-6 text-white">
-              <div className="text-center">
-                <div className="text-2xl font-light">
-                  {filledFieldsCount}/{totalFieldsCount}
-                </div>
-                <div className="text-xs text-white/70">ช่องที่กรอก</div>
-              </div>
-              <div className="w-px h-10 bg-white/30" />
-              <div className="text-center">
-                <div className="text-2xl font-light">{progressPercentage}%</div>
-                <div className="text-xs text-white/70">ความคืบหน้า</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mt-4">
-            <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white transition-all duration-300 ease-out"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
+            {value || "-"}
           </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Sticky Action Bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            {/* Left - Tools */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowOCRScanner(!showOCRScanner)}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                  showOCRScanner
-                    ? "bg-[#007398] text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <Scan className="w-4 h-4" />
-                สแกนเอกสาร
-              </button>
-              {template?.gcs_path_html && (
-                <Link
-                  href={`/forms/${templateId}/preview`}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                >
-                  <Eye className="w-4 h-4" />
-                  ดูตัวอย่างเทมเพลต
-                </Link>
-              )}
-            </div>
-
-            {/* Right - Submit */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 hidden sm:block">
-                {filledFieldsCount} จาก {totalFieldsCount} ช่อง
-              </span>
-              <button
-                onClick={handleSubmit}
-                disabled={processing || success !== null}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    กำลังสร้าง...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    สร้างเอกสาร
-                  </>
-                )}
-              </button>
-            </div>
+  // Render fill step content
+  const renderFillStep = () => (
+    <div className="flex flex-col items-start w-full">
+      <div className="flex flex-col items-start justify-center px-4 py-2 w-full">
+        {/* OCR Scanner Button */}
+        {currentStep === "fill" && (
+          <div className="mb-4 w-full">
+            <button
+              onClick={() => setShowOCRScanner(!showOCRScanner)}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm rounded transition-colors ${
+                showOCRScanner
+                  ? "bg-[#000091] text-white"
+                  : "bg-[#f0f0f0] text-[#5b5b5b] hover:bg-[#e0e0e0]"
+              }`}
+            >
+              <Scan className="w-4 h-4" />
+              สแกนเอกสาร
+            </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* OCR Scanner */}
         {showOCRScanner && (
-          <div className="mb-6">
+          <div className="mb-6 w-full">
             <OCRScanner
               templateId={templateId}
               onDataExtracted={handleOCRDataExtracted}
@@ -711,242 +761,310 @@ export default function FillFormPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Success State */}
-        {success && (
-          <div className="bg-white border border-green-200 rounded-lg p-6 mb-6 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-medium text-gray-900 mb-1">
-                  สร้างเอกสารสำเร็จ!
-                </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  เอกสารของคุณพร้อมให้ดาวน์โหลดแล้ว
-                  เลือกรูปแบบที่ต้องการด้านล่าง
+        <div className="flex flex-col gap-4 items-start w-full">
+          {groupedSections.length > 0 ? (
+            groupedSections.map((section) => (
+              <div key={section.name} className="w-full">
+                {/* Section Label */}
+                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
+                  {section.name}
                 </p>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => handleDownload("docx")}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#007398] text-white text-sm font-medium rounded hover:bg-[#005f7a] transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    ดาวน์โหลด DOCX
-                  </button>
-                  {success.downloadPdfUrl && (
-                    <button
-                      onClick={() => handleDownload("pdf")}
-                      className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      ดาวน์โหลด PDF
-                    </button>
+                <div className="flex flex-col gap-4">
+                  {section.fields.map((definition) =>
+                    renderFormField(definition, false),
                   )}
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      setSuccess(null);
-                      const initialData: Record<string, string> = {};
-                      placeholders.forEach((p) => {
-                        const key = p.replace(/\{\{|\}\}/g, "");
-                        initialData[key] = "";
-                      });
-                      setFormData(initialData);
-                    }}
-                    className="text-sm text-[#007398] hover:underline"
-                  >
-                    สร้างเอกสารใหม่ →
-                  </button>
+              </div>
+            ))
+          ) : (
+            // Fallback for templates without grouped sections
+            Object.entries(fieldDefinitions).map(([placeholder, definition]) =>
+              renderFormField(definition, false),
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render review step content
+  const renderReviewStep = () => (
+    <div className="flex flex-col items-start w-full">
+      <div className="flex flex-col items-start justify-center px-4 py-2 w-full">
+        <div className="flex flex-col gap-4 items-start w-full">
+          {groupedSections.length > 0 ? (
+            groupedSections.map((section) => (
+              <div key={section.name} className="w-full">
+                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
+                  {section.name}
+                </p>
+                <div className="flex flex-col gap-4">
+                  {section.fields.map((definition) =>
+                    renderReviewField(definition),
+                  )}
                 </div>
               </div>
+            ))
+          ) : (
+            Object.entries(fieldDefinitions).map(([placeholder, definition]) =>
+              renderReviewField(definition),
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render download step content
+  const renderDownloadStep = () => (
+    <div className="flex flex-col items-start w-full">
+      <div className="flex flex-col items-start justify-center px-4 py-2 w-full">
+        <div className="flex flex-col gap-4 items-start w-full">
+          {/* File Type Selection */}
+          <div className="flex flex-col gap-2 items-start w-full">
+            <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base">
+              เลือกประเภทไฟล์
+            </p>
+            <div className="relative">
+              <select
+                value={selectedFileType}
+                onChange={(e) =>
+                  setSelectedFileType(e.target.value as "docx" | "pdf")
+                }
+                className="
+                  font-['IBM_Plex_Sans_Thai',sans-serif]
+                  bg-[#f0f0f0]
+                  border-b-2 border-[#5b5b5b] border-l-0 border-r-0 border-t-0
+                  px-4 py-[13px] pr-10
+                  text-base
+                  text-[#5b5b5b]
+                  outline-none
+                  appearance-none
+                  min-w-[140px]
+                  cursor-pointer
+                "
+              >
+                <option value="pdf">ไฟล์ PDF</option>
+                <option value="docx">ไฟล์ DOCX</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#5b5b5b] pointer-events-none" />
             </div>
           </div>
-        )}
 
-        {/* Error State */}
-        {error && template && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-sm text-red-700">{error}</p>
+          {/* Success Message */}
+          {success && (
+            <div className="w-full p-4 bg-green-50 border-l-4 border-green-500 mt-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-green-700">
+                  เอกสารพร้อมให้ดาวน์โหลดแล้ว
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
-        {/* Form Layout */}
-        {!success && (
-          <div className={hasPreview ? "flex gap-6" : ""}>
-            {/* Left Column: Form */}
-            <div
-              className={
-                hasPreview
-                  ? "w-[420px] flex-shrink-0"
-                  : "max-w-2xl mx-auto w-full"
-              }
-            >
-              <form onSubmit={handleSubmit}>
-                {groupedSections.length > 0 ? (
-                  <div className="space-y-4">
-                    {groupedSections.map((section, sectionIdx) => (
-                      <div
-                        key={section.name}
-                        className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-                      >
-                        {/* Section Header */}
-                        <div
-                          className="px-4 py-3 border-b border-gray-100"
-                          style={{
-                            backgroundColor:
-                              SECTION_COLORS[
-                                section.colorIndex % SECTION_COLORS.length
-                              ].bg + "20",
-                            borderLeftWidth: "4px",
-                            borderLeftColor:
-                              SECTION_COLORS[
-                                section.colorIndex % SECTION_COLORS.length
-                              ].text,
-                          }}
-                        >
-                          <h2 className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                            <span
-                              className="w-5 h-5 rounded flex items-center justify-center text-xs text-white"
-                              style={{
-                                backgroundColor:
-                                  SECTION_COLORS[
-                                    section.colorIndex % SECTION_COLORS.length
-                                  ].text,
-                              }}
-                            >
-                              {sectionIdx + 1}
-                            </span>
-                            {section.name}
-                            <span className="text-gray-400 font-normal">
-                              ({section.fields.length} ช่อง)
-                            </span>
-                          </h2>
-                        </div>
+  // Render action buttons based on current step
+  const renderActionButtons = () => {
+    if (currentStep === "fill") {
+      return (
+        <button
+          onClick={handleGoToReview}
+          className="
+            font-['IBM_Plex_Sans_Thai',sans-serif]
+            bg-[#000091]
+            text-white
+            px-[13px] py-[10px]
+            text-base
+            hover:bg-[#000070]
+            transition-colors
+          "
+        >
+          ตรวจสอบฟอร์ม
+        </button>
+      );
+    }
 
-                        {/* Section Fields */}
-                        <div className="p-4 space-y-3">
-                          {section.fields.map((definition) => {
-                            const key = definition.placeholder.replace(
-                              /\{\{|\}\}/g,
-                              "",
-                            );
-                            return (
-                              <SmartInput
-                                key={key}
-                                definition={definition}
-                                value={formData[key] || ""}
-                                onChange={(value) =>
-                                  handleInputChange(key, value)
-                                }
-                                onFocus={() => setActiveField(key)}
-                                onBlur={() => setActiveField(null)}
-                                onAddressSelect={(address) =>
-                                  handleAddressSelect(key, address)
-                                }
-                                onDateFormatChange={(format) =>
-                                  handleDateFormatChange(key, format)
-                                }
-                                alias={aliases[definition.placeholder]}
-                                disabled={processing}
-                                compact={hasPreview}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+    if (currentStep === "review") {
+      return (
+        <div className="flex gap-2 items-start">
+          <button
+            onClick={handleGoToFill}
+            className="
+              font-['IBM_Plex_Sans_Thai',sans-serif]
+              bg-[#f0f0f0]
+              text-[#5b5b5b]
+              px-[13px] py-[10px]
+              text-base
+              hover:bg-[#e0e0e0]
+              transition-colors
+            "
+          >
+            แก้ไขข้อมูล
+          </button>
+          <button
+            onClick={handleConfirmAndProcess}
+            disabled={processing}
+            className="
+              font-['IBM_Plex_Sans_Thai',sans-serif]
+              bg-[#000091]
+              text-white
+              px-[13px] py-[10px]
+              text-base
+              hover:bg-[#000070]
+              transition-colors
+              disabled:opacity-50
+              disabled:cursor-not-allowed
+              inline-flex items-center gap-2
+            "
+          >
+            {processing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                กำลังสร้าง...
+              </>
+            ) : (
+              "ยืนยันข้อมูล"
+            )}
+          </button>
+        </div>
+      );
+    }
 
-                    {/* Mobile Submit Button */}
-                    <div className="lg:hidden bg-white border border-gray-200 rounded-lg p-4">
-                      <button
-                        type="submit"
-                        disabled={processing}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#007398] text-white font-medium rounded hover:bg-[#005f7a] transition-colors disabled:opacity-50"
-                      >
-                        {processing ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            กำลังสร้างเอกสาร...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-5 h-5" />
-                            สร้างเอกสาร
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-                    <Info className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">
-                      ไม่พบช่องกรอกข้อมูลในเทมเพลตนี้
+    if (currentStep === "download") {
+      return (
+        <button
+          onClick={() => handleDownload(selectedFileType)}
+          disabled={!success}
+          className="
+            font-['IBM_Plex_Sans_Thai',sans-serif]
+            bg-[#000091]
+            text-white
+            px-[13px] py-[10px]
+            text-base
+            hover:bg-[#000070]
+            transition-colors
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            inline-flex items-center gap-2
+          "
+        >
+          <Download className="w-4 h-4" />
+          ดาวน์โหลด
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-white font-['IBM_Plex_Sans_Thai',sans-serif]">
+      {/* Top bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <Link
+            href={`/forms/${templateId}`}
+            className="text-sm text-gray-600 hover:text-[#0b4db7]"
+          >
+            ← กลับไปหน้ารายละเอียด
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className={hasPreview ? "flex gap-6" : ""}>
+          {/* Form Card */}
+          <div
+            className={`bg-[#f6f6f6] flex flex-col gap-8 items-start p-8 rounded-lg ${
+              hasPreview ? "w-[420px] flex-shrink-0" : "w-full max-w-xl mx-auto"
+            }`}
+          >
+            {/* Progress Indicator */}
+            {renderProgressIndicator()}
+
+            {/* Step Content */}
+            {currentStep === "fill" && renderFillStep()}
+            {currentStep === "review" && renderReviewStep()}
+            {currentStep === "download" && renderDownloadStep()}
+
+            {/* Error State */}
+            {error && (
+              <div className="w-full px-4">
+                <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-red-700 text-sm">
+                      {error}
                     </p>
-                  </div>
-                )}
-              </form>
-
-              {/* Instructions */}
-              {!hasPreview && groupedSections.length > 0 && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-gray-400" />
-                    วิธีใช้งาน
-                  </h4>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    <li>1. กรอกข้อมูลในแต่ละช่องตามที่ต้องการ</li>
-                    <li>
-                      2. สามารถใช้ &quot;สแกนเอกสาร&quot;
-                      เพื่อกรอกข้อมูลอัตโนมัติ
-                    </li>
-                    <li>3. กดปุ่ม &quot;สร้างเอกสาร&quot; เพื่อสร้างไฟล์</li>
-                    <li>4. ดาวน์โหลดเอกสารในรูปแบบ DOCX หรือ PDF</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Right Column: Live Preview */}
-            {hasPreview && (
-              <div className="flex-1 min-w-0">
-                <div className="sticky top-36">
-                  <div className="p-4 bg-[#007398]/5 mb-4 border-l-4 border-[#007398]">
-                    <div className="flex gap-2 items-center">
-                      <Info className="w-5 h-5 text-[#007398] shrink-0" />
-                      <span className="flex gap-1 lg:flex-row flex-col">
-                        <p className="font-semibold">หมายเหตุ</p>
-                        <p className="">
-                          เอกสารในตัวอย่างอาจมีตำแหน่งบางที่ไม่ตรง
-                          <b> แต่ฉบับจริงจะตรงตามที่กำหนดไว้</b>
-                        </p>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-gray-400" />
-                        ตัวอย่างเอกสาร
-                      </h3>
-                    </div>
-                    <div className="h-[calc(100vh-12rem)] overflow-auto">
-                      <DocumentPreview
-                        htmlContent={previewHtml}
-                        showHeader={false}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Action Buttons */}
+            <div className="px-4">{renderActionButtons()}</div>
+
+            {/* Create New Document Link (on download step) */}
+            {currentStep === "download" && success && (
+              <div className="px-4">
+                <button
+                  onClick={() => {
+                    setSuccess(null);
+                    setCurrentStep("fill");
+                    const initialData: Record<string, string> = {};
+                    placeholders.forEach((p) => {
+                      const key = p.replace(/\{\{|\}\}/g, "");
+                      initialData[key] = "";
+                    });
+                    setFormData(initialData);
+                  }}
+                  className="text-sm text-[#0b4db7] hover:underline"
+                >
+                  สร้างเอกสารใหม่ →
+                </button>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right Column: Live Preview */}
+          {hasPreview && (
+            <div className="flex-1 min-w-0 hidden lg:block">
+              <div className="sticky top-8">
+                <div className="p-4 bg-[#0b4db7]/5 mb-4 border-l-4 border-[#0b4db7]">
+                  <div className="flex gap-2 items-center">
+                    <Info className="w-5 h-5 text-[#0b4db7] shrink-0" />
+                    <span className="flex gap-1 lg:flex-row flex-col text-sm">
+                      <p className="font-semibold">หมายเหตุ</p>
+                      <p>
+                        เอกสารในตัวอย่างอาจมีตำแหน่งบางที่ไม่ตรง
+                        <b> แต่ฉบับจริงจะตรงตามที่กำหนดไว้</b>
+                      </p>
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-gray-400" />
+                      ตัวอย่างเอกสาร
+                    </h3>
+                  </div>
+                  <div className="h-[calc(100vh-14rem)] overflow-auto">
+                    <DocumentPreview
+                      htmlContent={previewHtml}
+                      showHeader={false}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
