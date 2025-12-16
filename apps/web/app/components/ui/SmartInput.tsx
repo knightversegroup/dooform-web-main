@@ -291,12 +291,13 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                 let searchLevel: AddressSearchLevel = 'full';
                 const placeholderLower = definition.placeholder.toLowerCase();
 
-                if (dataType === 'province') {
+                // Check subdistrict FIRST (before district) to handle sub_district pattern
+                if (dataType === 'subdistrict' || placeholderLower.includes('subdistrict') || placeholderLower.includes('sub_district') || placeholderLower.includes('sub-district') || placeholderLower.includes('tambon') || placeholderLower.includes('ตำบล') || placeholderLower.includes('แขวง')) {
+                    searchLevel = 'subdistrict';
+                } else if (dataType === 'province') {
                     searchLevel = 'province';
                 } else if (dataType === 'district' || placeholderLower.includes('district') || placeholderLower.includes('amphoe') || placeholderLower.includes('อำเภอ') || placeholderLower.includes('เขต')) {
                     searchLevel = 'district';
-                } else if (dataType === 'subdistrict' || placeholderLower.includes('subdistrict') || placeholderLower.includes('tambon') || placeholderLower.includes('ตำบล') || placeholderLower.includes('แขวง')) {
-                    searchLevel = 'subdistrict';
                 }
 
                 const searchLevelPlaceholders: Record<AddressSearchLevel, string> = {

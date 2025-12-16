@@ -371,19 +371,18 @@ export function detectFieldType(placeholder: string): FieldDefinition {
         return definition;
     }
 
-    // District patterns (amphoe/เขต - more specific than address)
-    if (lowerKey.includes('district') || lowerKey.includes('amphoe') || lowerKey.includes('อำเภอ') || lowerKey.includes('เขต')) {
-        // Make sure it's not "subdistrict"
-        if (!lowerKey.includes('subdistrict') && !lowerKey.includes('tambon') && !lowerKey.includes('ตำบล') && !lowerKey.includes('แขวง')) {
-            definition.dataType = 'district';
-            definition.inputType = 'text';
-            return definition;
-        }
+    // Subdistrict patterns (tambon/ตำบล/แขวง) - check BEFORE district to handle sub_district
+    if (lowerKey.includes('subdistrict') || lowerKey.includes('sub_district') || lowerKey.includes('sub-district') ||
+        lowerKey.includes('tambon') || lowerKey.includes('ตำบล') || lowerKey.includes('แขวง')) {
+        definition.dataType = 'subdistrict';
+        definition.inputType = 'text';
+        return definition;
     }
 
-    // Subdistrict patterns (tambon/ตำบล/แขวง)
-    if (lowerKey.includes('subdistrict') || lowerKey.includes('tambon') || lowerKey.includes('ตำบล') || lowerKey.includes('แขวง')) {
-        definition.dataType = 'subdistrict';
+    // District patterns (amphoe/เขต - more specific than address)
+    // This runs after subdistrict check, so we don't need to exclude subdistrict patterns
+    if (lowerKey.includes('district') || lowerKey.includes('amphoe') || lowerKey.includes('อำเภอ') || lowerKey.includes('เขต')) {
+        definition.dataType = 'district';
         definition.inputType = 'text';
         return definition;
     }
