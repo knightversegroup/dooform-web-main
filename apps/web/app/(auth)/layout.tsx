@@ -1,31 +1,18 @@
-import Link from "next/link";
-import Image from "next/image";
-
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#f5f5f7] flex flex-col">
-      {/* Header */}
-      <header className="h-11 flex items-center px-4">
-        <Link href="/" className="inline-block">
-          <Image src="/logo.svg" alt="Dooform" width={80} height={16} />
-        </Link>
-      </header>
-
-      {/* Content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        {children}
-      </main>
-
-      {/* Footer */}
-      <footer className="h-11 flex items-center justify-center">
-        <p className="text-[10px] text-black/30">
-          © {new Date().getFullYear()} Dooform
-        </p>
-      </footer>
+    <div className="min-h-screen flex bg-background">
+      <div className="w-full py-4 md:py-8 flex flex-col min-h-screen">
+        <div className="flex-1 max-w-md mx-auto flex flex-col px-4 sm:px-6 w-full">
+          {children}
+        </div>
+        <div className="text-center text-sm text-muted-foreground py-4 px-4">
+          © {new Date().getFullYear()} Dooform - All rights reserved.
+        </div>
+      </div>
     </div>
   );
 }
