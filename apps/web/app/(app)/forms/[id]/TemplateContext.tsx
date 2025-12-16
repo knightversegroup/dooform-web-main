@@ -24,7 +24,7 @@ interface TemplateContextType {
     error: string | null;
     setTemplate: (template: Template | null) => void;
     setFieldDefinitions: (defs: Record<string, FieldDefinition> | null | ((prev: Record<string, FieldDefinition> | null) => Record<string, FieldDefinition> | null)) => void;
-    setAliases: (aliases: Record<string, string>) => void;
+    setAliases: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     setSections: React.Dispatch<React.SetStateAction<Section[]>>;
     refetchTemplate: () => Promise<void>;
     refetchHtml: () => Promise<void>;
@@ -168,49 +168,40 @@ export function TemplateProvider({
     }, [templateId, authLoading]);
 
     // Initialize sections from field definitions - use saved groups or fall back to entity
+    // IMPORTANT: Sort all fields by order first to maintain document order
     useEffect(() => {
         if (!fieldDefinitions || sectionsInitialized || Object.keys(fieldDefinitions).length === 0) return;
 
-        // Check if any field has a saved group (not starting with merged_hidden_)
-        const fieldsWithGroups = Object.entries(fieldDefinitions)
-            .filter(([, def]) => def.group && !def.group.startsWith("merged_hidden_"));
+        // First, convert to array and sort by order to maintain document order
+        const sortedFields = Object.entries(fieldDefinitions)
+            .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
+            .map(([key, def]) => ({ key, def, order: def.order ?? 9999 }))
+            .sort((a, b) => a.order - b.order); // Sort by document order first!
 
+        const fieldsWithGroups = sortedFields.filter(f => f.def.group && !f.def.group.startsWith("merged_hidden_"));
         const hasSavedGroups = fieldsWithGroups.length > 0;
 
         if (hasSavedGroups) {
             // Restore sections from saved group names
-            // Group format can be "sectionName|colorIndex" or just "sectionName"
             const groupMap: Record<string, { fields: string[]; minOrder: number; colorIndex: number }> = {};
 
-            Object.entries(fieldDefinitions)
-                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
-                .forEach(([key, def]) => {
-                    const rawGroup = def.group || "ทั่วไป";
-                    // Parse group format: "name|colorIndex" or just "name"
-                    const [groupName, colorStr] = rawGroup.includes("|")
-                        ? rawGroup.split("|")
-                        : [rawGroup, "0"];
-                    const colorIndex = parseInt(colorStr, 10) || 0;
+            sortedFields.forEach(({ key, def, order }) => {
+                const rawGroup = def.group || "ทั่วไป";
+                const [groupName, colorStr] = rawGroup.includes("|")
+                    ? rawGroup.split("|")
+                    : [rawGroup, "0"];
+                const colorIndex = parseInt(colorStr, 10) || 0;
 
-                    if (!groupMap[groupName]) {
-                        groupMap[groupName] = { fields: [], minOrder: def.order ?? Infinity, colorIndex };
-                    }
-                    groupMap[groupName].fields.push(key);
-                    if ((def.order ?? Infinity) < groupMap[groupName].minOrder) {
-                        groupMap[groupName].minOrder = def.order ?? Infinity;
-                    }
-                });
-
-            // Sort fields within each group by order
-            Object.values(groupMap).forEach((group) => {
-                group.fields.sort((a, b) => {
-                    const orderA = fieldDefinitions[a]?.order ?? 0;
-                    const orderB = fieldDefinitions[b]?.order ?? 0;
-                    return orderA - orderB;
-                });
+                if (!groupMap[groupName]) {
+                    groupMap[groupName] = { fields: [], minOrder: order, colorIndex };
+                }
+                groupMap[groupName].fields.push(key);
+                if (order < groupMap[groupName].minOrder) {
+                    groupMap[groupName].minOrder = order;
+                }
             });
 
-            // Sort groups by their minimum order
+            // Fields are already sorted, no need to sort again
             const sortedGroups = Object.entries(groupMap)
                 .sort(([, a], [, b]) => a.minOrder - b.minOrder);
 
@@ -224,29 +215,35 @@ export function TemplateProvider({
             setSections(initialSections);
         } else {
             // Fall back to entity-based grouping
-            const entityGroups: Record<Entity, string[]> = {
-                child: [], mother: [], father: [], informant: [], registrar: [], general: [],
+            const entityGroups: Record<Entity, { fields: string[]; minOrder: number }> = {
+                child: { fields: [], minOrder: 9999 },
+                mother: { fields: [], minOrder: 9999 },
+                father: { fields: [], minOrder: 9999 },
+                informant: { fields: [], minOrder: 9999 },
+                registrar: { fields: [], minOrder: 9999 },
+                general: { fields: [], minOrder: 9999 },
             };
 
-            Object.entries(fieldDefinitions)
-                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
-                .forEach(([key, def]) => {
-                    const entity = def.entity && entityGroups[def.entity] ? def.entity : "general";
-                    entityGroups[entity].push(key);
-                });
-
-            const initialSections: Section[] = [];
-            let colorIndex = 0;
-            (Object.entries(entityGroups) as [Entity, string[]][]).forEach(([entity, fields]) => {
-                if (fields.length > 0) {
-                    initialSections.push({
-                        id: `section-${entity}`,
-                        name: ENTITY_LABELS[entity],
-                        fields,
-                        colorIndex: colorIndex++
-                    });
+            // Fields are already sorted by order, so they'll be added in document order
+            sortedFields.forEach(({ key, def, order }) => {
+                const entity = def.entity && entityGroups[def.entity] ? def.entity : "general";
+                entityGroups[entity].fields.push(key);
+                if (order < entityGroups[entity].minOrder) {
+                    entityGroups[entity].minOrder = order;
                 }
             });
+
+            // Sort entity groups by minimum order (first-come-first-serve)
+            const sortedEntityGroups = (Object.entries(entityGroups) as [Entity, { fields: string[]; minOrder: number }][])
+                .filter(([, group]) => group.fields.length > 0)
+                .sort(([, a], [, b]) => a.minOrder - b.minOrder);
+
+            const initialSections: Section[] = sortedEntityGroups.map(([entity, group], index) => ({
+                id: `section-${entity}`,
+                name: ENTITY_LABELS[entity],
+                fields: group.fields,
+                colorIndex: index,
+            }));
 
             setSections(initialSections);
         }

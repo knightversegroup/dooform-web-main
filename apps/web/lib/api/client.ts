@@ -48,6 +48,7 @@ import {
   FilterOptionCreateRequest,
   FilterOptionUpdateRequest,
   AliasSuggestionResponse,
+  FieldTypeSuggestionResponse,
 } from './types';
 
 class ApiClient {
@@ -405,6 +406,22 @@ class ApiClient {
 
     const response = await makeRequest();
     return this.handleResponseWithRetry<AliasSuggestionResponse>(response, makeRequest);
+  }
+
+  async suggestFieldTypes(templateId: string, htmlContent?: string): Promise<FieldTypeSuggestionResponse> {
+    const makeRequest = () => fetch(`${this.baseUrl}/templates/${templateId}/suggest-field-types`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({
+        html_content: htmlContent || '',
+      }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<FieldTypeSuggestionResponse>(response, makeRequest);
   }
 
   // Document Processing

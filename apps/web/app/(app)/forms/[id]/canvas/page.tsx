@@ -38,8 +38,10 @@ import {
     Save,
     CheckCircle,
     Palette,
+    Sparkles,
+    AlertCircle,
 } from "lucide-react";
-import type { DataType, ConfigurableDataType, Entity } from "@/lib/api/types";
+import type { DataType, ConfigurableDataType, Entity, FieldTypeSuggestion } from "@/lib/api/types";
 import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 // Section type is imported from context
 import { EntityRulesToolbar } from "@/app/components/ui/EntityRulesToolbar";
@@ -414,12 +416,19 @@ export default function CanvasPage() {
         loading,
         error,
         setFieldDefinitions,
+        setAliases,
         setSections,
     } = useTemplate();
 
     const [showRulesToolbar, setShowRulesToolbar] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+
+    // AI Field Type Suggestion state
+    const [suggestingFieldTypes, setSuggestingFieldTypes] = useState(false);
+    const [fieldTypeSuggestions, setFieldTypeSuggestions] = useState<FieldTypeSuggestion[]>([]);
+    const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+    const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
     const allFields = useMemo<FieldInfo[]>(() => {
         if (!fieldDefinitions) return [];
@@ -502,6 +511,79 @@ export default function CanvasPage() {
             return { ...prev, [fieldKey]: { ...prev[fieldKey], dataType: dataType as DataType } };
         });
     }, [setFieldDefinitions]);
+
+    // AI Field Type Suggestion handlers
+    const handleSuggestFieldTypes = useCallback(async () => {
+        if (!template?.id) return;
+
+        setSuggestingFieldTypes(true);
+        setSuggestionError(null);
+        setFieldTypeSuggestions([]);
+
+        try {
+            const result = await apiClient.suggestFieldTypes(template.id);
+            setFieldTypeSuggestions(result.suggestions);
+            setShowSuggestionsModal(true);
+        } catch (err) {
+            console.error("Failed to suggest field types:", err);
+            setSuggestionError(err instanceof Error ? err.message : "ไม่สามารถแนะนำประเภทข้อมูลได้");
+        } finally {
+            setSuggestingFieldTypes(false);
+        }
+    }, [template?.id]);
+
+    const handleApplyAllSuggestions = useCallback(() => {
+        if (!fieldDefinitions) return;
+
+        const updatedDefinitions = { ...fieldDefinitions };
+        const updatedAliases = { ...aliases };
+
+        fieldTypeSuggestions.forEach((suggestion) => {
+            const key = suggestion.placeholder.replace(/\{\{|\}\}/g, "");
+            if (updatedDefinitions[key]) {
+                updatedDefinitions[key] = {
+                    ...updatedDefinitions[key],
+                    dataType: suggestion.data_type as DataType,
+                    inputType: suggestion.input_type as "text" | "select" | "date" | "time" | "number" | "textarea" | "checkbox" | "merged",
+                    entity: suggestion.entity as Entity,
+                };
+            }
+            if (suggestion.suggested_alias) {
+                updatedAliases[suggestion.placeholder] = suggestion.suggested_alias;
+            }
+        });
+
+        setFieldDefinitions(updatedDefinitions);
+        setAliases(updatedAliases);
+        setFieldTypeSuggestions([]);
+        setShowSuggestionsModal(false);
+    }, [fieldDefinitions, aliases, fieldTypeSuggestions, setFieldDefinitions, setAliases]);
+
+    const handleApplySingleSuggestion = useCallback((suggestion: FieldTypeSuggestion) => {
+        if (!fieldDefinitions) return;
+
+        const key = suggestion.placeholder.replace(/\{\{|\}\}/g, "");
+        if (fieldDefinitions[key]) {
+            setFieldDefinitions((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    [key]: {
+                        ...prev[key],
+                        dataType: suggestion.data_type as DataType,
+                        inputType: suggestion.input_type as "text" | "select" | "date" | "time" | "number" | "textarea" | "checkbox" | "merged",
+                        entity: suggestion.entity as Entity,
+                    },
+                };
+            });
+        }
+
+        if (suggestion.suggested_alias) {
+            setAliases((prev) => ({ ...prev, [suggestion.placeholder]: suggestion.suggested_alias }));
+        }
+
+        setFieldTypeSuggestions((prev) => prev.filter((s) => s.placeholder !== suggestion.placeholder));
+    }, [fieldDefinitions, setFieldDefinitions, setAliases]);
 
     // Save sections to database
     const handleSave = useCallback(async () => {
@@ -680,6 +762,18 @@ export default function CanvasPage() {
                     <button onClick={() => setShowRulesToolbar(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200">
                         <Wand2 className="w-4 h-4" />กฎจัดกลุ่ม
                     </button>
+                    <button
+                        onClick={handleSuggestFieldTypes}
+                        disabled={suggestingFieldTypes}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:bg-indigo-50 disabled:text-indigo-400 rounded-lg border border-indigo-200"
+                    >
+                        {suggestingFieldTypes ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="w-4 h-4" />
+                        )}
+                        {suggestingFieldTypes ? "กำลังวิเคราะห์..." : "AI แนะนำ"}
+                    </button>
                     <button onClick={addSection} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">
                         <Plus className="w-4 h-4" />เพิ่มส่วน
                     </button>
@@ -741,6 +835,94 @@ export default function CanvasPage() {
                     isOpen={showRulesToolbar}
                     onClose={() => setShowRulesToolbar(false)}
                 />
+            )}
+
+            {/* AI Suggestions Modal */}
+            {showSuggestionsModal && fieldTypeSuggestions.length > 0 && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-indigo-600" />
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    AI แนะนำประเภทข้อมูล ({fieldTypeSuggestions.length} รายการ)
+                                </h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleApplyAllSuggestions}
+                                    className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                                >
+                                    ใช้ทั้งหมด
+                                </button>
+                                <button
+                                    onClick={() => setShowSuggestionsModal(false)}
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {fieldTypeSuggestions.map((suggestion, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex items-start justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-medium text-gray-900">
+                                                {suggestion.suggested_alias || suggestion.placeholder}
+                                            </span>
+                                            <span className="text-xs text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                {Math.round(suggestion.confidence * 100)}%
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 font-mono mb-1">
+                                            {suggestion.placeholder}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">
+                                                {suggestion.data_type}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded">
+                                                {suggestion.input_type}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
+                                                {ENTITY_LABELS[suggestion.entity as Entity] || suggestion.entity}
+                                            </span>
+                                        </div>
+                                        {suggestion.reasoning && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {suggestion.reasoning}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleApplySingleSuggestion(suggestion)}
+                                        className="ml-3 px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded"
+                                    >
+                                        ใช้
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Suggestion Error Toast */}
+            {suggestionError && (
+                <div className="fixed bottom-4 right-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg shadow-lg z-50">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <p className="text-sm text-red-700">{suggestionError}</p>
+                    <button
+                        onClick={() => setSuggestionError(null)}
+                        className="ml-2 text-red-400 hover:text-red-600"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
             )}
         </div>
     );

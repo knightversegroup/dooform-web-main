@@ -52,10 +52,11 @@ interface SmartInputProps {
     disabled?: boolean;
     showPlaceholderKey?: boolean;
     compact?: boolean;
+    hideLabel?: boolean;
 }
 
 export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, SmartInputProps>(
-    ({ definition, value, onChange, onFocus, onBlur, onAddressSelect, onDateFormatChange, alias, disabled, showPlaceholderKey = true, compact = false }, ref) => {
+    ({ definition, value, onChange, onFocus, onBlur, onAddressSelect, onDateFormatChange, alias, disabled, showPlaceholderKey = true, compact = false, hideLabel = false }, ref) => {
         const [touched, setTouched] = useState(false);
         const [error, setError] = useState<string | null>(null);
         const [dateFormat, setDateFormat] = useState<DateFormat>(definition.dateFormat || 'dd/mm/yyyy');
@@ -416,14 +417,16 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
 
         return (
             <div className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'} w-full`}>
-                <div className="flex items-center justify-between">
-                    <label className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground truncate`}>
-                        {label}
-                    </label>
-                    <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-text-muted px-1.5 py-0.5 bg-surface-alt rounded flex-shrink-0`}>
-                        {DATA_TYPE_LABELS[definition.dataType] || definition.dataType}
-                    </span>
-                </div>
+                {!hideLabel && (
+                    <div className="flex items-center justify-between">
+                        <label className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground truncate`}>
+                            {label}
+                        </label>
+                        <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-text-muted px-1.5 py-0.5 bg-surface-alt rounded flex-shrink-0`}>
+                            {DATA_TYPE_LABELS[definition.dataType] || definition.dataType}
+                        </span>
+                    </div>
+                )}
 
                 {renderInput()}
 

@@ -530,6 +530,24 @@ export interface AliasSuggestionResponse {
   message: string;
 }
 
+// AI Field Type Suggestion Types
+export interface FieldTypeSuggestion {
+  placeholder: string;
+  suggested_alias: string;
+  data_type: DataType;
+  input_type: InputType;
+  entity: Entity;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface FieldTypeSuggestionResponse {
+  suggestions: FieldTypeSuggestion[];
+  model: string;
+  provider: string;
+  message: string;
+}
+
 // Filter Types
 export interface FilterOption {
   id: string;

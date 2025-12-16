@@ -34,49 +34,48 @@ interface SectionListProps {
 
 export function SectionList({ fieldDefinitions, aliases }: SectionListProps) {
     // Group fields by saved group name OR by entity if no group is saved
+    // IMPORTANT: Sort all fields by order first to maintain document order
     const sections = useMemo(() => {
-        // First, check if any field has a saved group (not starting with merged_hidden_)
-        const fieldsWithGroups = Object.entries(fieldDefinitions)
-            .filter(([, def]) => def.group && !def.group.startsWith("merged_hidden_"));
+        // First, convert to array and sort by order to maintain document order
+        const sortedFields = Object.entries(fieldDefinitions)
+            .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
+            .map(([key, def]) => ({
+                key,
+                label: aliases?.[key] || key,
+                order: def.order ?? 9999,
+                definition: def,
+            }))
+            .sort((a, b) => a.order - b.order); // Sort by document order first!
 
+        const fieldsWithGroups = sortedFields.filter(f => f.definition.group && !f.definition.group.startsWith("merged_hidden_"));
         const hasSavedGroups = fieldsWithGroups.length > 0;
 
         if (hasSavedGroups) {
-            // Use saved groups
             const groupMap: Record<string, { fields: { key: string; label: string; order: number }[]; minOrder: number; colorIndex: number }> = {};
 
-            Object.entries(fieldDefinitions)
-                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
-                .forEach(([key, def]) => {
-                    // Parse group format: "name|colorIndex" or just "name"
-                    const rawGroup = def.group || "ทั่วไป";
-                    const [groupName, colorStr] = rawGroup.includes("|")
-                        ? rawGroup.split("|")
-                        : [rawGroup, "0"];
-                    const colorIndex = parseInt(colorStr, 10) || 0;
-                    const order = def.order ?? 9999;
+            sortedFields.forEach((field) => {
+                const rawGroup = field.definition.group || "ทั่วไป";
+                const [groupName, colorStr] = rawGroup.includes("|")
+                    ? rawGroup.split("|")
+                    : [rawGroup, "0"];
+                const colorIndex = parseInt(colorStr, 10) || 0;
 
-                    if (!groupMap[groupName]) {
-                        groupMap[groupName] = { fields: [], minOrder: order, colorIndex };
-                    }
+                if (!groupMap[groupName]) {
+                    groupMap[groupName] = { fields: [], minOrder: field.order, colorIndex };
+                }
 
-                    groupMap[groupName].fields.push({
-                        key,
-                        label: aliases?.[key] || key,
-                        order,
-                    });
-
-                    if (order < groupMap[groupName].minOrder) {
-                        groupMap[groupName].minOrder = order;
-                    }
+                groupMap[groupName].fields.push({
+                    key: field.key,
+                    label: field.label,
+                    order: field.order,
                 });
 
-            // Sort fields within each group by order
-            Object.values(groupMap).forEach((group) => {
-                group.fields.sort((a, b) => a.order - b.order);
+                if (field.order < groupMap[groupName].minOrder) {
+                    groupMap[groupName].minOrder = field.order;
+                }
             });
 
-            // Sort groups by their minimum order
+            // Fields are already sorted, no need to sort again
             return Object.entries(groupMap)
                 .sort(([, a], [, b]) => a.minOrder - b.minOrder)
                 .map(([name, group]) => ({
@@ -95,31 +94,29 @@ export function SectionList({ fieldDefinitions, aliases }: SectionListProps) {
                 general: [],
             };
 
-            Object.entries(fieldDefinitions)
-                .filter(([, def]) => !def.group?.startsWith("merged_hidden_"))
-                .forEach(([key, def]) => {
-                    const entity = def.entity && entityGroups[def.entity] ? def.entity : "general";
-                    const order = def.order ?? 9999;
-                    entityGroups[entity].push({
-                        key,
-                        label: aliases?.[key] || key,
-                        order,
-                    });
+            // Fields are already sorted by order, so they'll be added in document order
+            sortedFields.forEach((field) => {
+                const entity = field.definition.entity && entityGroups[field.definition.entity]
+                    ? field.definition.entity
+                    : "general";
+                entityGroups[entity].push({
+                    key: field.key,
+                    label: field.label,
+                    order: field.order,
                 });
-
-            // Sort fields within each entity group by order
-            Object.values(entityGroups).forEach((fields) => {
-                fields.sort((a, b) => a.order - b.order);
             });
 
-            // Convert to sections, filtering out empty groups
+            // Sort entity groups by the minimum order of their fields (first-come-first-serve)
             return (Object.entries(entityGroups) as [Entity, { key: string; label: string; order: number }[]][])
                 .filter(([, fields]) => fields.length > 0)
                 .map(([entity, fields]) => ({
                     name: ENTITY_LABELS[entity],
                     fields,
                     colorIndex: ENTITY_COLOR_MAP[entity] % SECTION_COLOR_PALETTE.length,
-                }));
+                    minOrder: fields.length > 0 ? fields[0].order : 9999,
+                }))
+                .sort((a, b) => a.minOrder - b.minOrder)
+                .map(({ minOrder, ...rest }) => rest);
         }
     }, [fieldDefinitions, aliases]);
 

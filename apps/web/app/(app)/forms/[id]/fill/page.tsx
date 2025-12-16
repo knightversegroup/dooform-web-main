@@ -663,27 +663,18 @@ export default function FillFormPage({ params }: PageProps) {
           )}
         </div>
         <div className="flex items-start w-full">
-          <input
-            type={definition.inputType === "date" ? "date" : "text"}
+          <SmartInput
+            definition={definition}
             value={value}
-            onChange={(e) => !disabled && handleInputChange(key, e.target.value)}
+            onChange={(val) => !disabled && handleInputChange(key, val)}
             onFocus={() => setActiveField(key)}
             onBlur={() => setActiveField(null)}
-            disabled={disabled}
-            placeholder={definition.placeholder.replace(/\{\{|\}\}/g, "")}
-            className={`
-              font-['IBM_Plex_Sans_Thai',sans-serif]
-              bg-[#f0f0f0]
-              border-b-2 border-[#b7b7b7] border-l-0 border-r-0 border-t-0
-              px-4 py-[13px]
-              text-base
-              w-full
-              outline-none
-              transition-colors
-              ${disabled ? "opacity-50 text-[#5b5b5b] border-[#5b5b5b]" : "text-[#171717]"}
-              ${!value ? "text-[#a9a9a9]" : ""}
-              focus:border-[#0b4db7]
-            `}
+            onAddressSelect={(address) => handleAddressSelect(key, address)}
+            alias={aliases[definition.placeholder]}
+            disabled={disabled || processing}
+            showPlaceholderKey={false}
+            compact={false}
+            hideLabel={true}
           />
         </div>
       </div>
