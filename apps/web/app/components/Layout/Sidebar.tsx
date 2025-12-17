@@ -77,13 +77,6 @@ const SETTINGS_SECTION: NavSection = {
   ],
 };
 
-// Workspace Mock Data
-const WORKSPACES: Workspace[] = [
-  { id: "1", name: "Knight Consultant", color: "bg-blue-500", href: "/workspace/knight" },
-  { id: "2", name: "Dooform Team", color: "bg-emerald-500", href: "/workspace/dooform" },
-  { id: "3", name: "Personal", color: "bg-violet-500", href: "/workspace/personal" },
-];
-
 const WORKSPACE_NAV: NavItem[] = [
   { label: "สมาชิก", href: "/workspace/members", icon: Users },
   { label: "โปรเจกต์", href: "/workspace/projects", icon: FolderOpen },
@@ -155,7 +148,9 @@ function NavLink({
       title={isCollapsed ? item.label : undefined}
     >
       <Icon className="w-4 h-4 opacity-50 shrink-0" />
-      {!isCollapsed && <span className="truncate leading-none">{item.label}</span>}
+      {!isCollapsed && (
+        <span className="truncate leading-none">{item.label}</span>
+      )}
     </Link>
   );
 }
@@ -171,37 +166,6 @@ function SubNavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
       }`}
     >
       <span className="truncate leading-none">{item.label}</span>
-    </Link>
-  );
-}
-
-function WorkspaceLink({
-  workspace,
-  isActive,
-  isCollapsed,
-}: {
-  workspace: Workspace;
-  isActive: boolean;
-  isCollapsed: boolean;
-}) {
-  return (
-    <Link
-      href={workspace.href}
-      className={`group flex items-center rounded-lg text-sm font-medium transition-colors font-sans ${
-        isCollapsed ? "justify-center w-10 h-10" : "gap-3 px-3 py-2"
-      } ${
-        isActive
-          ? "bg-neutral-200 text-neutral-900"
-          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
-      }`}
-      title={isCollapsed ? workspace.name : undefined}
-    >
-      <span
-        className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold text-white shrink-0 ${workspace.color}`}
-      >
-        {workspace.name.charAt(0).toUpperCase()}
-      </span>
-      {!isCollapsed && <span className="truncate leading-none">{workspace.name}</span>}
     </Link>
   );
 }
@@ -337,7 +301,7 @@ export default function Sidebar() {
       const newWidth = e.clientX;
       setWidth(newWidth);
     },
-    [isResizing, setWidth]
+    [isResizing, setWidth],
   );
 
   // Handle mouse up to stop resizing
@@ -404,42 +368,6 @@ export default function Sidebar() {
                   isExpanded={expandedSections[section.key]}
                   onToggle={() => toggleSection(section.key)}
                   pathname={pathname}
-                  isCollapsed={isCollapsed}
-                />
-              </li>
-            ))}
-
-            {/* Workspace Divider */}
-            {!isCollapsed && (
-              <li className="px-3 pt-4 pb-2">
-                <div className="text-sm font-medium text-neutral-400">
-                  Workspace
-                </div>
-              </li>
-            )}
-            {isCollapsed && (
-              <li className="pt-4 pb-2">
-                <div className="w-6 h-px bg-neutral-200" />
-              </li>
-            )}
-
-            {/* Workspace List */}
-            {WORKSPACES.map((workspace) => (
-              <li key={workspace.id}>
-                <WorkspaceLink
-                  workspace={workspace}
-                  isActive={isActivePath(pathname, workspace.href)}
-                  isCollapsed={isCollapsed}
-                />
-              </li>
-            ))}
-
-            {/* Workspace Navigation */}
-            {WORKSPACE_NAV.map((item) => (
-              <li key={item.href}>
-                <NavLink
-                  item={item}
-                  isActive={isActivePath(pathname, item.href)}
                   isCollapsed={isCollapsed}
                 />
               </li>

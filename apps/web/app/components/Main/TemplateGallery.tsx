@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Plus, MoreVertical, FileText } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  MoreVertical,
+  FileText,
+} from "lucide-react";
 
 // ============================================================================
 // Types
@@ -12,7 +18,7 @@ export interface TemplateItem {
   id: string;
   title: string;
   style?: string;
-  thumbnailUrl?: string;      // Image thumbnail URL (auto-generated from PDF)
+  thumbnailUrl?: string; // Image thumbnail URL (auto-generated from PDF)
   href: string;
   isBlank?: boolean;
 }
@@ -67,7 +73,7 @@ function TemplateCard({
         className={`
           relative rounded-md overflow-hidden border border-neutral-200
           transition-all duration-200
-          group-hover:border-blue-500 group-hover:shadow-md
+          group-hover:shadow-md
           ${isShowcase ? "h-[180px]" : "h-[200px]"}
         `}
       >
@@ -78,7 +84,7 @@ function TemplateCard({
           /* Blank document with plus icon */
           <div className="w-full h-full bg-white flex items-center justify-center">
             <div className="relative">
-              <Plus className="w-16 h-16 text-blue-500" strokeWidth={1} />
+              <Plus className="w-16 h-16 text-[#003087]" strokeWidth={1} />
             </div>
           </div>
         ) : template.thumbnailUrl && !imgError ? (
@@ -104,7 +110,7 @@ function TemplateCard({
         <div
           className={`
             text-sm font-medium text-neutral-800 truncate
-            group-hover:text-blue-600 transition-colors
+            group-hover:text-[#003087] transition-colors
           `}
           title={template.title}
         >
