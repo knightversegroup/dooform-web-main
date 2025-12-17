@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Loader2, ChevronDown, Lightbulb, FileText } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { DocumentType, FilterCategory, Template } from "@/lib/api/types";
+import TemplateGallery, { TemplateItem, TemplateSection } from "./TemplateGallery";
 
 // ============================================================================
 // Types
@@ -338,6 +339,47 @@ export default function TemplateGroupList() {
   // Get recent documents for activity list
   const recentDocuments = documentTypes.slice(0, 10);
 
+  // Transform data for TemplateGallery
+  const galleryRecentTemplates: TemplateItem[] = useMemo(() => {
+    // Get templates from recent document types
+    const templates: TemplateItem[] = [];
+    documentTypes.slice(0, 5).forEach((docType) => {
+      if (docType.templates && docType.templates.length > 0) {
+        docType.templates.slice(0, 2).forEach((template) => {
+          templates.push({
+            id: template.id,
+            title: template.display_name || template.name,
+            style: docType.name,
+            href: `/forms/${template.id}`,
+          });
+        });
+      }
+    });
+    return templates.slice(0, 7);
+  }, [documentTypes]);
+
+  const gallerySections: TemplateSection[] = useMemo(() => {
+    return categories.slice(0, 4).map((cat) => ({
+      id: cat.key,
+      title: cat.label,
+      templates: (categorizedDocTypes[cat.key] || []).slice(0, 5).flatMap((docType) => {
+        if (docType.templates && docType.templates.length > 0) {
+          return docType.templates.slice(0, 2).map((template) => ({
+            id: template.id,
+            title: template.display_name || template.name,
+            style: docType.name,
+            href: `/forms/${template.id}`,
+          }));
+        }
+        return [{
+          id: docType.id,
+          title: docType.name,
+          href: `/templates/${docType.id}`,
+        }];
+      }),
+    }));
+  }, [categories, categorizedDocTypes]);
+
   // Render loading state
   if (loading) {
     return (
@@ -363,14 +405,21 @@ export default function TemplateGroupList() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto font-sans">
-      {/* Page Title */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">สำหรับคุณ</h1>
-      </div>
+    <div className="font-sans">
+      {/* Template Gallery - Google Docs Style */}
+      <TemplateGallery
+        recentTemplates={galleryRecentTemplates}
+        sections={gallerySections}
+      />
 
-      {/* Divider */}
-      <div className="border-b border-neutral-200 mb-8" />
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Page Title */}
+        <div className="mb-8 mt-8">
+          <h1 className="text-2xl font-bold text-neutral-900">สำหรับคุณ</h1>
+        </div>
+
+        {/* Divider */}
+        <div className="border-b border-neutral-200 mb-8" />
 
       {/* Recent Workspaces Section */}
       <section className="mb-10">
@@ -501,6 +550,7 @@ export default function TemplateGroupList() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
