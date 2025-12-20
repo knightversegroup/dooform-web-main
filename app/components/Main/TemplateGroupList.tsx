@@ -21,6 +21,7 @@ interface Category {
 interface FilterSection {
   id: string;
   label: string;
+  fieldName?: string;
   options: { value: string; label: string; count?: number }[];
 }
 
@@ -215,23 +216,29 @@ function useTemplateData() {
 export default function TemplateGroupList() {
   const { documentTypes, orphanTemplates, popularTemplates, filterCategories, loading, error } = useTemplateData();
 
-  // State
+  // State - selectedFilters is now a map of fieldName -> selected values
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [openFilters, setOpenFilters] = useState<string[]>(["category"]);
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [itemsPerPage, setItemsPerPage] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Derived data
-  const categoryLabels = useMemo(() => {
-    const labels: Record<string, string> = {};
-    const categoryFilter = filterCategories.find((cat) => cat.field_name === "category");
-    categoryFilter?.options?.forEach((opt) => {
-      labels[opt.value] = opt.label;
+  // Derived data - build label maps for all filter categories
+  const filterLabels = useMemo(() => {
+    const labels: Record<string, Record<string, string>> = {};
+    filterCategories.forEach((filter) => {
+      labels[filter.field_name] = {};
+      filter.options?.forEach((opt) => {
+        labels[filter.field_name][opt.value] = opt.label;
+      });
     });
     return labels;
   }, [filterCategories]);
+
+  const categoryLabels = useMemo(() => {
+    return filterLabels["category"] || {};
+  }, [filterLabels]);
 
   const categorizedDocTypes = useMemo(() => {
     return documentTypes.reduce((acc, docType) => {
@@ -250,20 +257,72 @@ export default function TemplateGroupList() {
     }));
   }, [categorizedDocTypes, categoryLabels]);
 
-  // Filter sections for sidebar
+  // Filter sections for sidebar - dynamically built from backend filterCategories
   const filterSections: FilterSection[] = useMemo(() => {
-    return [
-      {
-        id: "category",
-        label: "หมวดหมู่",
-        options: categories.map((cat) => ({
-          value: cat.key,
-          label: cat.label,
-          count: cat.count,
-        })),
-      },
-    ];
-  }, [categories]);
+    const sections: FilterSection[] = [];
+
+    // Sort by sort_order and filter active only
+    const sortedFilters = [...filterCategories]
+      .filter((f) => f.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order);
+
+    sortedFilters.forEach((filter) => {
+      // For category filter, add counts from documentTypes
+      if (filter.field_name === "category") {
+        sections.push({
+          id: filter.field_name,
+          label: filter.name,
+          fieldName: filter.field_name,
+          options: (filter.options || [])
+            .filter((opt) => opt.is_active)
+            .map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+              count: categorizedDocTypes[opt.value]?.length || 0,
+            }))
+            .filter((opt) => opt.count > 0),
+        });
+        return;
+      }
+
+      // For other filters (type, tier), use options from backend
+      sections.push({
+        id: filter.field_name,
+        label: filter.name,
+        fieldName: filter.field_name,
+        options: (filter.options || [])
+          .filter((opt) => opt.is_active)
+          .map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+          })),
+      });
+    });
+
+    // Always add is_verified and is_ai_available filters (these may not come from backend)
+    const hasVerifiedFilter = sortedFilters.some((f) => f.field_name === "is_verified");
+    const hasAIFilter = sortedFilters.some((f) => f.field_name === "is_ai_available");
+
+    if (!hasVerifiedFilter) {
+      sections.push({
+        id: "is_verified",
+        label: "สถานะการยืนยัน",
+        fieldName: "is_verified",
+        options: [{ value: "true", label: "ยืนยันแล้ว" }],
+      });
+    }
+
+    if (!hasAIFilter) {
+      sections.push({
+        id: "is_ai_available",
+        label: "รองรับ AI",
+        fieldName: "is_ai_available",
+        options: [{ value: "true", label: "รองรับ AI" }],
+      });
+    }
+
+    return sections;
+  }, [filterCategories, categorizedDocTypes]);
 
   // Gallery data
   const galleryRecentTemplates: TemplateItem[] = useMemo(() => {
@@ -325,12 +384,41 @@ export default function TemplateGroupList() {
       );
     }
 
-    // Filter by category
-    if (selectedCategories.length > 0) {
-      results = results.filter((doc) =>
-        selectedCategories.includes(doc.category || "other")
-      );
-    }
+    // Apply all selected filters
+    Object.entries(selectedFilters).forEach(([fieldName, values]) => {
+      if (values.length === 0) return;
+
+      results = results.filter((doc) => {
+        // Handle category filter
+        if (fieldName === "category") {
+          return values.includes(doc.category || "other");
+        }
+
+        // Handle type filter (check templates)
+        if (fieldName === "type") {
+          return doc.templates?.some((t) => values.includes(t.type || ""));
+        }
+
+        // Handle tier filter (check templates)
+        if (fieldName === "tier") {
+          return doc.templates?.some((t) => values.includes(t.tier || "free"));
+        }
+
+        // Handle is_verified filter (check templates)
+        if (fieldName === "is_verified") {
+          const wantVerified = values.includes("true");
+          return doc.templates?.some((t) => t.is_verified === wantVerified);
+        }
+
+        // Handle is_ai_available filter (check templates)
+        if (fieldName === "is_ai_available") {
+          const wantAI = values.includes("true");
+          return doc.templates?.some((t) => t.is_ai_available === wantAI);
+        }
+
+        return true;
+      });
+    });
 
     // Sort
     switch (sortBy) {
@@ -347,7 +435,7 @@ export default function TemplateGroupList() {
     }
 
     return results;
-  }, [documentTypes, searchQuery, selectedCategories, sortBy]);
+  }, [documentTypes, searchQuery, selectedFilters, sortBy]);
 
   // Pagination
   const totalItems = filteredResults.length;
@@ -365,12 +453,30 @@ export default function TemplateGroupList() {
     );
   };
 
-  const toggleCategorySelection = (value: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(value)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value]
-    );
+  const toggleFilterSelection = (fieldName: string, value: string) => {
+    setSelectedFilters((prev) => {
+      const currentValues = prev[fieldName] || [];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter((v) => v !== value)
+        : [...currentValues, value];
+
+      return {
+        ...prev,
+        [fieldName]: newValues,
+      };
+    });
+    setCurrentPage(1);
+  };
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    return Object.values(selectedFilters).reduce((sum, values) => sum + values.length, 0);
+  }, [selectedFilters]);
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedFilters({});
+    setSearchQuery("");
     setCurrentPage(1);
   };
 
@@ -390,14 +496,25 @@ export default function TemplateGroupList() {
         {/* Sidebar */}
         <aside className="w-60 flex-shrink-0 border-r border-gray-200 min-h-screen">
           <div className="sticky top-0">
+            {/* Clear filters button */}
+            {activeFilterCount > 0 && (
+              <div className="p-3 border-b border-gray-200">
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-[#000091] hover:underline"
+                >
+                  ล้างตัวกรอง ({activeFilterCount})
+                </button>
+              </div>
+            )}
             {filterSections.map((section) => (
               <FilterAccordion
                 key={section.id}
                 section={section}
                 isOpen={openFilters.includes(section.id)}
                 onToggle={() => toggleFilter(section.id)}
-                selectedValues={selectedCategories}
-                onSelect={toggleCategorySelection}
+                selectedValues={selectedFilters[section.id] || []}
+                onSelect={(value) => toggleFilterSelection(section.id, value)}
               />
             ))}
           </div>
@@ -471,7 +588,7 @@ export default function TemplateGroupList() {
                 />
               ))}
               {orphanTemplates.length > 0 &&
-                selectedCategories.length === 0 &&
+                activeFilterCount === 0 &&
                 !searchQuery &&
                 orphanTemplates.slice(0, 6).map((template) => (
                   <TemplateCard
