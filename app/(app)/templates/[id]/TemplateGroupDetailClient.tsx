@@ -66,39 +66,62 @@ function TemplateCard({
     };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-sm p-5 hover:border-gray-300 hover:shadow-sm transition-all">
-            <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-[#000091]/10 rounded flex items-center justify-center text-[#000091] font-semibold flex-shrink-0">
-                    {index + 1}
+        <div className="bg-white border border-gray-200 rounded-sm hover:border-gray-300 hover:shadow-sm transition-all p-6">
+            <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-xl font-medium text-gray-900">
+                    {template.variant_name || template.name || `รูปแบบ ${index + 1}`}
+                </h3>
+                {template.is_verified && (
+                    <CheckCircle className="w-4 h-4 text-[#000091]" />
+                )}
+                {template.is_ai_available && (
+                    <Sparkles className="w-4 h-4 text-purple-500" />
+                )}
+            </div>
+
+            {template.description && (
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    {template.description}
+                </p>
+            )}
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+                <div className="flex items-center gap-1.5">
+                    <FileText className="w-4 h-4" />
+                    <span>{(template.placeholders?.length || 0)} ช่องกรอก</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-base font-semibold text-gray-900">
-                            {template.variant_name || template.name || `รูปแบบ ${index + 1}`}
-                        </h3>
-                        {template.is_verified && (
-                            <CheckCircle className="w-4 h-4 text-[#000091]" />
-                        )}
-                        {template.is_ai_available && (
-                            <Sparkles className="w-4 h-4 text-purple-500" />
-                        )}
-                    </div>
-                    {template.description && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {template.description}
-                        </p>
+                <div className="flex items-center gap-1.5">
+                    {template.tier === "free" ? (
+                        <Unlock className="w-4 h-4 text-green-600" />
+                    ) : (
+                        <Lock className="w-4 h-4 text-amber-600" />
                     )}
-                    <div className="flex items-center gap-3 text-sm text-gray-500">
-                        {(template.placeholders?.length || 0) > 0 && (
-                            <span>{template.placeholders?.length} ช่องกรอก</span>
-                        )}
-                        {template.tier && (
-                            <span className="capitalize">{template.tier}</span>
-                        )}
-                    </div>
+                    <span className="capitalize">{template.tier || "Free"}</span>
                 </div>
             </div>
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+
+            {/* CTA Buttons */}
+            <div className="flex items-center gap-2">
+                {authLoading ? (
+                    <Loader2 className="w-5 h-5 text-[#000091] animate-spin" />
+                ) : isAuthenticated ? (
+                    <Link
+                        href={`/forms/${template.id}/fill`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#000091] text-white rounded-sm hover:bg-[#00006b] transition-colors"
+                    >
+                        <Play className="w-4 h-4" />
+                        เริ่มใช้งาน
+                    </Link>
+                ) : (
+                    <Link
+                        href={`/login?redirect=/forms/${template.id}/fill`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#000091] text-white rounded-sm hover:bg-[#00006b] transition-colors"
+                    >
+                        <LogIn className="w-4 h-4" />
+                        เข้าสู่ระบบ
+                    </Link>
+                )}
                 <Link
                     href={`/forms/${template.id}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-sm hover:bg-gray-50 transition-colors"
@@ -106,39 +129,18 @@ function TemplateCard({
                     ดูรายละเอียด
                     <ArrowRight className="w-4 h-4" />
                 </Link>
-                {authLoading ? (
-                    <Loader2 className="w-5 h-5 text-[#000091] animate-spin" />
-                ) : isAuthenticated ? (
-                    <>
-                        <Link
-                            href={`/forms/${template.id}/fill`}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#000091] text-white rounded-sm hover:bg-[#00006b] transition-colors"
-                        >
-                            <Play className="w-4 h-4" />
-                            ใช้งาน
-                        </Link>
-                        {onDelete && (
-                            <button
-                                onClick={handleDelete}
-                                disabled={deleting}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors disabled:opacity-50"
-                            >
-                                {deleting ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Trash2 className="w-4 h-4" />
-                                )}
-                            </button>
-                        )}
-                    </>
-                ) : (
-                    <Link
-                        href={`/login?redirect=/forms/${template.id}/fill`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#000091] text-white rounded-sm hover:bg-[#00006b] transition-colors"
+                {isAuthenticated && onDelete && (
+                    <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors disabled:opacity-50 ml-auto"
                     >
-                        <LogIn className="w-4 h-4" />
-                        เข้าสู่ระบบเพื่อใช้งาน
-                    </Link>
+                        {deleting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Trash2 className="w-4 h-4" />
+                        )}
+                    </button>
                 )}
             </div>
         </div>
