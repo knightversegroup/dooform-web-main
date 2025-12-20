@@ -328,8 +328,23 @@ class ApiClient {
   }
 
   // Get thumbnail URL for template gallery
-  getThumbnailUrl(templateId: string): string {
-    return `${this.baseUrl}/templates/${templateId}/thumbnail`;
+  // quality: 'normal' (default, faster) or 'hd' (pixel-perfect, larger)
+  // width: pixel width (default 300 for normal, 800 for HD)
+  getThumbnailUrl(templateId: string, options?: { quality?: 'normal' | 'hd'; width?: number }): string {
+    const params = new URLSearchParams();
+    if (options?.quality) {
+      params.set('quality', options.quality);
+    }
+    if (options?.width) {
+      params.set('width', options.width.toString());
+    }
+    const queryString = params.toString();
+    return `${this.baseUrl}/templates/${templateId}/thumbnail${queryString ? `?${queryString}` : ''}`;
+  }
+
+  // Get HD thumbnail URL for detail page (pixel-perfect rendering)
+  getHDThumbnailUrl(templateId: string, width: number = 800): string {
+    return this.getThumbnailUrl(templateId, { quality: 'hd', width });
   }
 
   // Fetch PDF preview as blob for displaying in iframe or viewer

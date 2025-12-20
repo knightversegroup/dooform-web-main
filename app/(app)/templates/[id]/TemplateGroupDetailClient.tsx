@@ -475,12 +475,12 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                             </div>
                         </div>
 
-                        {/* Right - Preview Image */}
+                        {/* Right - Preview Image (HD quality for detail page) */}
                         <div className="hidden lg:block">
                             {templates.length > 0 && (
                                 <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
                                     <Image
-                                        src={apiClient.getThumbnailUrl(templates[0].id)}
+                                        src={apiClient.getHDThumbnailUrl(templates[0].id, 800)}
                                         alt={documentType.name}
                                         fill
                                         className="object-contain"

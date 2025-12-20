@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, ChevronRight, FileText, ArrowRight } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, FileText, ArrowRight, LayoutGrid, List } from "lucide-react";
 import LogoLoaderInline from "@/app/components/LogoLoaderInline";
 import { apiClient } from "@/lib/api/client";
 import { DocumentType, FilterCategory, Template } from "@/lib/api/types";
@@ -26,6 +26,7 @@ interface FilterSection {
 }
 
 type SortOption = "popular" | "newest" | "name";
+type ViewMode = "grid" | "list";
 
 // ============================================================================
 // Sub-components
@@ -132,6 +133,58 @@ function DocumentTypeCard({ doc, categoryLabel }: { doc: DocumentType; categoryL
   );
 }
 
+function DocumentTypeRow({ doc, categoryLabel }: { doc: DocumentType; categoryLabel: string }) {
+  const templateCount = doc.templates?.length || 0;
+
+  return (
+    <Link
+      href={`/templates/${doc.id}`}
+      className="flex items-center gap-4 p-4 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+    >
+      <div className="w-10 h-10 bg-[#000091]/10 rounded flex items-center justify-center flex-shrink-0">
+        <FileText className="w-5 h-5 text-[#000091]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-medium text-gray-900 group-hover:text-[#000091] transition-colors truncate">
+          {doc.name}
+        </h3>
+        <p className="text-sm text-gray-500 truncate">
+          {templateCount} รูปแบบเอกสาร · {categoryLabel}
+        </p>
+      </div>
+      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-[#000091]/10 text-[#000091] rounded flex-shrink-0">
+        {templateCount} รูปแบบ
+      </span>
+      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#000091] flex-shrink-0" />
+    </Link>
+  );
+}
+
+function TemplateRow({ template, categoryLabel }: { template: Template; categoryLabel?: string }) {
+  return (
+    <Link
+      href={`/forms/${template.id}`}
+      className="flex items-center gap-4 p-4 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+    >
+      <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
+        <FileText className="w-5 h-5 text-gray-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-medium text-gray-900 group-hover:text-[#000091] transition-colors truncate">
+          {template.name}
+        </h3>
+        <p className="text-sm text-gray-500 truncate">
+          {categoryLabel || "แบบฟอร์มเดี่ยว"}
+        </p>
+      </div>
+      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded flex-shrink-0">
+        แบบฟอร์ม
+      </span>
+      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#000091] flex-shrink-0" />
+    </Link>
+  );
+}
+
 function LoadingState() {
   return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -223,6 +276,7 @@ export default function TemplateGroupList() {
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [itemsPerPage, setItemsPerPage] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Derived data - build label maps for all filter categories
   const filterLabels = useMemo(() => {
@@ -574,31 +628,78 @@ export default function TemplateGroupList() {
                   <option value="name">ชื่อ</option>
                 </select>
               </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center border border-gray-300 rounded-sm overflow-hidden">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 ${viewMode === "grid" ? "bg-[#000091] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                  title="มุมมองการ์ด"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 ${viewMode === "list" ? "bg-[#000091] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                  title="มุมมองรายการ"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Results Grid */}
+          {/* Results */}
           <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {paginatedResults.map((doc) => (
-                <DocumentTypeCard
-                  key={doc.id}
-                  doc={doc}
-                  categoryLabel={getCategoryLabel(doc.category)}
-                />
-              ))}
-              {orphanTemplates.length > 0 &&
-                activeFilterCount === 0 &&
-                !searchQuery &&
-                orphanTemplates.slice(0, 6).map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    template={template}
-                    categoryLabel="แบบฟอร์มเดี่ยว"
+            {viewMode === "grid" ? (
+              /* Grid View */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginatedResults.map((doc) => (
+                  <DocumentTypeCard
+                    key={doc.id}
+                    doc={doc}
+                    categoryLabel={getCategoryLabel(doc.category)}
                   />
                 ))}
-              {paginatedResults.length === 0 && orphanTemplates.length === 0 && <EmptyState />}
-            </div>
+                {orphanTemplates.length > 0 &&
+                  activeFilterCount === 0 &&
+                  !searchQuery &&
+                  orphanTemplates.slice(0, 6).map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      categoryLabel="แบบฟอร์มเดี่ยว"
+                    />
+                  ))}
+                {paginatedResults.length === 0 && orphanTemplates.length === 0 && <EmptyState />}
+              </div>
+            ) : (
+              /* List View */
+              <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
+                {paginatedResults.map((doc) => (
+                  <DocumentTypeRow
+                    key={doc.id}
+                    doc={doc}
+                    categoryLabel={getCategoryLabel(doc.category)}
+                  />
+                ))}
+                {orphanTemplates.length > 0 &&
+                  activeFilterCount === 0 &&
+                  !searchQuery &&
+                  orphanTemplates.slice(0, 6).map((template) => (
+                    <TemplateRow
+                      key={template.id}
+                      template={template}
+                      categoryLabel="แบบฟอร์มเดี่ยว"
+                    />
+                  ))}
+                {paginatedResults.length === 0 && orphanTemplates.length === 0 && (
+                  <div className="p-8">
+                    <EmptyState />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pagination */}
