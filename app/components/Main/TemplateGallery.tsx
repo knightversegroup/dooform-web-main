@@ -175,7 +175,7 @@ export default function TemplateGallery({
   const showcaseTemplates = [BLANK_TEMPLATE, ...recentTemplates.slice(0, 6)];
 
   return (
-    <div className="bg-neutral-50 border-b border-neutral-200">
+    <div className="border-b border-neutral-200">
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
