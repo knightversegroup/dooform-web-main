@@ -40,11 +40,13 @@ import {
     Palette,
     Sparkles,
     AlertCircle,
+    Radio,
 } from "lucide-react";
 import type { DataType, ConfigurableDataType, Entity, FieldTypeSuggestion } from "@/lib/api/types";
 import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 // Section type is imported from context
 import { EntityRulesToolbar } from "@/app/components/ui/EntityRulesToolbar";
+import { RadioGroupManager } from "@/app/components/ui/RadioGroupManager";
 import { useTemplate, type Section } from "../TemplateContext";
 
 
@@ -421,6 +423,7 @@ export default function CanvasPage() {
     } = useTemplate();
 
     const [showRulesToolbar, setShowRulesToolbar] = useState(false);
+    const [showRadioGroupManager, setShowRadioGroupManager] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -762,6 +765,9 @@ export default function CanvasPage() {
                     <button onClick={() => setShowRulesToolbar(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200">
                         <Wand2 className="w-4 h-4" />กฎจัดกลุ่ม
                     </button>
+                    <button onClick={() => setShowRadioGroupManager(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200">
+                        <Radio className="w-4 h-4" />Radio Group
+                    </button>
                     <button
                         onClick={handleSuggestFieldTypes}
                         disabled={suggestingFieldTypes}
@@ -909,6 +915,27 @@ export default function CanvasPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Radio Group Manager */}
+            {fieldDefinitions && (
+                <RadioGroupManager
+                    isOpen={showRadioGroupManager}
+                    onClose={() => setShowRadioGroupManager(false)}
+                    fieldDefinitions={fieldDefinitions}
+                    onSave={async (updatedDefinitions) => {
+                        // Update local state
+                        setFieldDefinitions(updatedDefinitions);
+                        // Save to backend
+                        if (template) {
+                            try {
+                                await apiClient.updateFieldDefinitions(template.id, updatedDefinitions);
+                            } catch (err) {
+                                console.error("Failed to save radio groups:", err);
+                            }
+                        }
+                    }}
+                />
             )}
 
             {/* Suggestion Error Toast */}

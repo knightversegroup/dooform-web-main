@@ -2,7 +2,7 @@
 
 import { forwardRef, useState, useRef, useEffect } from "react";
 import { Calendar, Type } from "lucide-react";
-import { FieldDefinition, DateFormat } from "@/lib/api/types";
+import { FieldDefinition, DateFormat, RadioOption } from "@/lib/api/types";
 
 // Text case format options
 type TextCaseFormat = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
@@ -259,6 +259,42 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                             {isChecked ? 'ใช่ / Yes' : 'ไม่ใช่ / No'}
                         </span>
                     </label>
+                );
+            }
+
+            // Radio group input (for mutually exclusive options like Male/Female)
+            if (inputType === 'radio' && definition.isRadioGroup && definition.radioOptions) {
+                // value format: "placeholder_key" (e.g., "$1" or "$2")
+                // The selected placeholder gets "/" and others get ""
+                return (
+                    <div className="flex flex-col gap-2 py-2">
+                        {definition.radioOptions.map((option) => {
+                            const isSelected = value === option.placeholder;
+                            return (
+                                <label
+                                    key={option.placeholder}
+                                    className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-lg transition-colors"
+                                >
+                                    <input
+                                        type="radio"
+                                        name={definition.radioGroupId || definition.placeholder}
+                                        checked={isSelected}
+                                        onChange={() => handleChange(option.placeholder)}
+                                        onFocus={handleFocus}
+                                        onBlur={handleBlur}
+                                        disabled={disabled}
+                                        className="w-5 h-5 text-primary border-border-default focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-foreground">
+                                        {option.label}
+                                    </span>
+                                    <span className="text-xs text-text-muted font-mono ml-auto">
+                                        {`{{${option.placeholder}}}`}
+                                    </span>
+                                </label>
+                            );
+                        })}
+                    </div>
                 );
             }
 

@@ -38,7 +38,14 @@ export type Entity =
   | 'registrar'
   | 'general';
 
-export type InputType = 'text' | 'select' | 'date' | 'time' | 'number' | 'textarea' | 'checkbox' | 'merged';
+export type InputType = 'text' | 'select' | 'date' | 'time' | 'number' | 'textarea' | 'checkbox' | 'merged' | 'radio';
+
+// Radio option for radio group input type
+export interface RadioOption {
+  placeholder: string;   // The placeholder key (e.g., "$1", "$2")
+  label: string;         // Display label (e.g., "ชาย / Male")
+  value: string;         // Value when selected (typically "/" for checkmarks)
+}
 
 export interface FieldValidation {
   pattern?: string;
@@ -71,6 +78,11 @@ export interface FieldDefinition {
   mergedFields?: string[];      // List of original placeholder keys that are merged
   separator?: string;           // Separator to use when splitting the merged value (default: "")
   mergePattern?: string;        // Pattern used to detect merge (e.g., "$1-$13")
+
+  // Radio group properties (for mutually exclusive checkbox groups like Male/Female)
+  isRadioGroup?: boolean;       // Whether this field is a radio group master
+  radioGroupId?: string;        // Unique identifier for the radio group
+  radioOptions?: RadioOption[]; // List of radio options with their placeholders
 }
 
 // Detected mergeable group from placeholders

@@ -33,10 +33,12 @@ import {
   groupFieldsBySavedGroup,
   type GroupedSection,
   splitMergedValue,
+  expandRadioGroupValue,
   formatDateToDisplay,
   type DateFormat,
 } from "@/lib/utils/fieldTypes";
 import { AddressSelection } from "@/lib/api/addressService";
+import type { FieldDefinition } from "@/lib/api/types";
 
 // Step definitions
 type FormStep = "fill" | "review" | "download";
@@ -184,13 +186,15 @@ export default function FillFormPage({ params }: PageProps) {
 
         // Fetch field definitions
         try {
+          // Field definitions now include radio groups configured via the Canvas page
+          // Radio groups have isRadioGroup: true and radioOptions array
           const definitions = await apiClient.getFieldDefinitions(templateId);
           setFieldDefinitions(definitions);
 
-          // Filter out hidden merged fields
+          // Filter out hidden merged fields and radio group hidden fields
           const visibleDefinitions: Record<string, FieldDefinition> = {};
           Object.entries(definitions).forEach(([key, def]) => {
-            if (def.group?.startsWith("merged_hidden_")) {
+            if (def.group?.startsWith("merged_hidden_") || def.group?.startsWith("radio_hidden_")) {
               return;
             }
             visibleDefinitions[key] = def;
@@ -298,6 +302,43 @@ export default function FillFormPage({ params }: PageProps) {
             );
             const regex = new RegExp(escapedPlaceholder, "gi");
             const fieldColor = fieldColorMap[fieldKey] || sectionColor;
+
+            if (fieldValue) {
+              if (isActive) {
+                updatedHtml = updatedHtml.replace(
+                  regex,
+                  `<mark style="background-color: ${fieldColor.bg}; color: ${fieldColor.text}; padding: 2px 6px; border-radius: 4px; font-weight: 500;">${fieldValue}</mark>`,
+                );
+              } else {
+                updatedHtml = updatedHtml.replace(regex, fieldValue);
+              }
+            } else {
+              if (isActive) {
+                updatedHtml = updatedHtml.replace(
+                  regex,
+                  `<mark style="background-color: ${fieldColor.bg}; color: ${fieldColor.text}; padding: 2px 6px; border-radius: 4px; opacity: 0.7;">___</mark>`,
+                );
+              } else {
+                updatedHtml = updatedHtml.replace(regex, "");
+              }
+            }
+          });
+        } else if (definition?.isRadioGroup && definition.radioOptions) {
+          // Radio group: expand selected value to all placeholders for preview
+          const expandedValues = expandRadioGroupValue(
+            rawValue,
+            definition.radioOptions,
+          );
+
+          definition.radioOptions.forEach((option) => {
+            const fieldValue = expandedValues[option.placeholder] || "";
+            const placeholder = `{{${option.placeholder}}}`;
+            const escapedPlaceholder = placeholder.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&",
+            );
+            const regex = new RegExp(escapedPlaceholder, "gi");
+            const fieldColor = fieldColorMap[option.placeholder] || sectionColor;
 
             if (fieldValue) {
               if (isActive) {
@@ -495,6 +536,17 @@ export default function FillFormPage({ params }: PageProps) {
           );
 
           Object.entries(splitValues).forEach(([fieldKey, fieldValue]) => {
+            apiFormData[`{{${fieldKey}}}`] = fieldValue;
+          });
+        } else if (definition?.isRadioGroup && definition.radioOptions) {
+          // Radio group: expand selected value to all placeholders
+          // The formData[key] contains the selected placeholder (e.g., "$1")
+          const expandedValues = expandRadioGroupValue(
+            formData[key],
+            definition.radioOptions,
+          );
+
+          Object.entries(expandedValues).forEach(([fieldKey, fieldValue]) => {
             apiFormData[`{{${fieldKey}}}`] = fieldValue;
           });
         } else {

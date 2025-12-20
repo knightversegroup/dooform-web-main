@@ -7,10 +7,11 @@ import type {
     FieldValidation,
     FieldDefinition,
     DateFormat,
+    RadioOption,
 } from '@/lib/api/types';
 
 // Re-export types for convenience
-export type { DataType, Entity, InputType, FieldValidation, FieldDefinition, DateFormat };
+export type { DataType, Entity, InputType, FieldValidation, FieldDefinition, DateFormat, RadioOption };
 
 // Thai name prefixes
 export const NAME_PREFIX_OPTIONS = [
@@ -897,4 +898,165 @@ export function validateField(value: string, definition: FieldDefinition): { val
     }
 
     return { valid: true };
+}
+
+// ============================================================================
+// Radio Group Utilities
+// ============================================================================
+
+/**
+ * Create a radio group field definition from multiple checkbox placeholders.
+ * This groups mutually exclusive options (like Male/Female) into a single radio input.
+ *
+ * @param groupId - Unique identifier for the radio group
+ * @param label - Display label for the radio group
+ * @param options - Array of radio options with placeholders and labels
+ * @param baseDefinition - Optional base field definition to extend
+ * @returns FieldDefinition configured as a radio group
+ *
+ * @example
+ * // For Male/Female checkboxes where $1 = Male, $2 = Female
+ * const radioGroup = createRadioGroupDefinition(
+ *   'sex_selection',
+ *   'เพศ / Sex',
+ *   [
+ *     { placeholder: '$1', label: 'ชาย / Male', value: '/' },
+ *     { placeholder: '$2', label: 'หญิง / Female', value: '/' }
+ *   ]
+ * );
+ */
+export function createRadioGroupDefinition(
+    groupId: string,
+    label: string,
+    options: RadioOption[],
+    baseDefinition?: Partial<FieldDefinition>
+): FieldDefinition {
+    // Use the first option's placeholder as the master placeholder
+    const masterPlaceholder = options[0]?.placeholder || groupId;
+
+    return {
+        placeholder: `{{${masterPlaceholder}}}`,
+        dataType: 'text',
+        entity: 'general',
+        inputType: 'radio',
+        label,
+        isRadioGroup: true,
+        radioGroupId: groupId,
+        radioOptions: options,
+        ...baseDefinition,
+    };
+}
+
+/**
+ * Expand a radio group selection into individual placeholder values.
+ * The selected placeholder gets the checked value (e.g., "/"), others get empty string.
+ *
+ * @param selectedPlaceholder - The placeholder key that was selected
+ * @param radioOptions - All options in the radio group
+ * @returns Record mapping each placeholder to its value
+ *
+ * @example
+ * // If user selects Male ($1):
+ * const values = expandRadioGroupValue('$1', [
+ *   { placeholder: '$1', label: 'Male', value: '/' },
+ *   { placeholder: '$2', label: 'Female', value: '/' }
+ * ]);
+ * // Result: { '$1': '/', '$2': '' }
+ */
+export function expandRadioGroupValue(
+    selectedPlaceholder: string,
+    radioOptions: RadioOption[]
+): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    for (const option of radioOptions) {
+        result[option.placeholder] = option.placeholder === selectedPlaceholder
+            ? (option.value || '/')
+            : '';
+    }
+
+    return result;
+}
+
+/**
+ * Get the selected option from a radio group based on current form values.
+ * Useful for determining which radio should be checked when loading existing data.
+ *
+ * @param formValues - Current form values record
+ * @param radioOptions - All options in the radio group
+ * @returns The placeholder key of the selected option, or empty string if none selected
+ */
+export function getRadioGroupSelectedValue(
+    formValues: Record<string, string>,
+    radioOptions: RadioOption[]
+): string {
+    for (const option of radioOptions) {
+        const value = formValues[option.placeholder];
+        // Check if this option is selected (has a truthy value like "/" or "✓")
+        if (value && value.trim() !== '') {
+            return option.placeholder;
+        }
+    }
+    return '';
+}
+
+/**
+ * Detect potential radio groups from existing checkbox field definitions.
+ * This looks for pairs/groups of checkboxes that might be mutually exclusive.
+ *
+ * @param definitions - Field definitions to analyze
+ * @returns Array of suggested radio group configurations
+ */
+export function detectPotentialRadioGroups(
+    definitions: Record<string, FieldDefinition>
+): Array<{
+    groupId: string;
+    placeholders: string[];
+    suggestion: string;
+}> {
+    const checkboxFields = Object.entries(definitions)
+        .filter(([_, def]) => def.inputType === 'checkbox')
+        .map(([key, def]) => ({ key, def }));
+
+    const suggestions: Array<{
+        groupId: string;
+        placeholders: string[];
+        suggestion: string;
+    }> = [];
+
+    // Look for common patterns that suggest mutual exclusivity
+    const patterns = [
+        { keywords: ['male', 'female', 'ชาย', 'หญิง', 'sex', 'เพศ'], suggestion: 'เพศ / Sex' },
+        { keywords: ['yes', 'no', 'ใช่', 'ไม่ใช่'], suggestion: 'ใช่/ไม่ใช่' },
+        { keywords: ['married', 'single', 'divorced', 'สมรส', 'โสด'], suggestion: 'สถานภาพ' },
+        { keywords: ['alive', 'deceased', 'มีชีวิต', 'เสียชีวิต'], suggestion: 'สถานะ' },
+    ];
+
+    // Group checkboxes by their numeric suffix (e.g., $1, $2 might be related)
+    const dollarGroups = new Map<string, string[]>();
+    for (const { key } of checkboxFields) {
+        const match = key.match(/^\$(\d+)$/);
+        if (match) {
+            const num = parseInt(match[1], 10);
+            // Group consecutive numbers
+            const groupKey = Math.floor((num - 1) / 2).toString();
+            if (!dollarGroups.has(groupKey)) {
+                dollarGroups.set(groupKey, []);
+            }
+            dollarGroups.get(groupKey)!.push(key);
+        }
+    }
+
+    // Add suggestions for dollar-prefixed pairs
+    for (const [groupKey, placeholders] of dollarGroups) {
+        if (placeholders.length === 2) {
+            suggestions.push({
+                groupId: `dollar_radio_${groupKey}`,
+                placeholders: placeholders.sort(),
+                suggestion: `Radio group for ${placeholders.join(', ')}`,
+            });
+        }
+    }
+
+    return suggestions;
 }

@@ -7,8 +7,6 @@ import {
   History,
   BarChart3,
   Sliders,
-  Filter,
-  FileType,
   ChevronRight,
   Search,
   Home,
@@ -17,6 +15,7 @@ import {
   FolderOpen,
   LucideIcon,
   GripVertical,
+  Settings,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -66,15 +65,11 @@ const EXPANDABLE_SECTIONS: NavSection[] = [
   },
 ];
 
-const SETTINGS_SECTION: NavSection = {
-  key: "settings",
-  label: "การตั้งค่าระบบ",
-  icon: Sliders,
-  items: [
-    { label: "กฎการตรวจจับช่อง", href: "/settings/field-rules", icon: Sliders },
-    { label: "ตัวกรอง", href: "/settings/filters", icon: Filter },
-    { label: "ประเภทเอกสาร", href: "/settings/document-types", icon: FileType },
-  ],
+// Settings consolidated into a single Console page
+const SETTINGS_NAV: NavItem = {
+  label: "Console",
+  href: "/console",
+  icon: Settings,
 };
 
 const WORKSPACE_NAV: NavItem[] = [
@@ -387,13 +382,11 @@ export default function Sidebar() {
               </li>
             )}
 
-            {/* Settings Section */}
+            {/* Console - Single settings page */}
             <li>
-              <ExpandableSection
-                section={SETTINGS_SECTION}
-                isExpanded={expandedSections[SETTINGS_SECTION.key]}
-                onToggle={() => toggleSection(SETTINGS_SECTION.key)}
-                pathname={pathname}
+              <NavLink
+                item={SETTINGS_NAV}
+                isActive={isActivePath(pathname, SETTINGS_NAV.href)}
                 isCollapsed={isCollapsed}
               />
             </li>
