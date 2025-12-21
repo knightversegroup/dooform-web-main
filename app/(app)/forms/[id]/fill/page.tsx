@@ -156,6 +156,13 @@ export default function FillFormPage({ params }: PageProps) {
     }
   }, [authLoading, isAuthenticated, router, templateId]);
 
+  // Redirect to template page if user has no quota (and is not admin)
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && !isAdmin && !canGenerate) {
+      router.replace(`/forms/${templateId}?error=no_quota`);
+    }
+  }, [authLoading, isAuthenticated, isAdmin, canGenerate, router, templateId]);
+
   useEffect(() => {
     const loadTemplate = async () => {
       try {

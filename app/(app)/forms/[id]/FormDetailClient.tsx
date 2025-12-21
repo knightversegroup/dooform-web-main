@@ -25,8 +25,9 @@ import {
     Unlock,
     Trash2,
     FileText,
+    AlertTriangle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Template, Tier } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/context";
@@ -61,12 +62,16 @@ interface PageProps {
 export default function FormDetailClient({ params }: PageProps) {
     const { id: templateId } = use(params);
     const router = useRouter();
-    const { isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
+    const searchParams = useSearchParams();
+    const { isAuthenticated, isLoading: authLoading, isAdmin, canGenerate, user } = useAuth();
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAllFields, setShowAllFields] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // Check for quota error from redirect
+    const quotaError = searchParams.get("error") === "no_quota";
 
     // Delete template handler
     const handleDeleteTemplate = async () => {
@@ -162,6 +167,25 @@ export default function FormDetailClient({ params }: PageProps) {
 
     return (
         <div className="min-h-screen bg-white font-sans">
+            {/* Quota Error Banner */}
+            {quotaError && (
+                <div className="bg-red-50 border-b border-red-200">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <div className="flex items-center gap-3">
+                            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-red-800 font-medium">
+                                    คุณไม่มีโควต้าเหลือ
+                                </p>
+                                <p className="text-red-600 text-sm">
+                                    กรุณาติดต่อผู้ดูแลระบบเพื่อขอเพิ่มโควต้า
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Hero Section */}
             <div className="border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -231,13 +255,21 @@ export default function FormDetailClient({ params }: PageProps) {
                                 {authLoading ? (
                                     <Loader2 className="w-5 h-5 text-[#000091] animate-spin" />
                                 ) : isAuthenticated ? (
-                                    <Link
-                                        href={`/forms/${templateId}/fill`}
-                                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#000091] text-white font-medium rounded-sm hover:bg-[#00006b] transition-colors"
-                                    >
-                                        <Play className="w-5 h-5" />
-                                        เริ่มใช้งาน
-                                    </Link>
+                                    // Check if user can generate (has quota or is admin)
+                                    canGenerate || isAdmin ? (
+                                        <Link
+                                            href={`/forms/${templateId}/fill`}
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#000091] text-white font-medium rounded-sm hover:bg-[#00006b] transition-colors"
+                                        >
+                                            <Play className="w-5 h-5" />
+                                            เริ่มใช้งาน
+                                        </Link>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gray-300 text-gray-500 font-medium rounded-sm cursor-not-allowed">
+                                            <Lock className="w-5 h-5" />
+                                            ไม่มีโควต้า
+                                        </div>
+                                    )
                                 ) : (
                                     <Link
                                         href={`/login?redirect=/forms/${templateId}/fill`}
@@ -383,13 +415,20 @@ export default function FormDetailClient({ params }: PageProps) {
                                 </div>
                             ) : isAuthenticated ? (
                                 <>
-                                    <Link
-                                        href={`/forms/${templateId}/fill`}
-                                        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#000091] text-white text-sm font-medium rounded-sm hover:bg-[#00006b] transition-colors"
-                                    >
-                                        <Play className="w-4 h-4" />
-                                        เริ่มกรอกข้อมูล
-                                    </Link>
+                                    {canGenerate || isAdmin ? (
+                                        <Link
+                                            href={`/forms/${templateId}/fill`}
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#000091] text-white text-sm font-medium rounded-sm hover:bg-[#00006b] transition-colors"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                            เริ่มกรอกข้อมูล
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gray-300 text-gray-500 text-sm font-medium rounded-sm cursor-not-allowed">
+                                            <Lock className="w-4 h-4" />
+                                            ไม่มีโควต้า
+                                        </div>
+                                    )}
                                     <Link
                                         href={`/forms/${templateId}/preview`}
                                         className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-sm hover:bg-gray-50 transition-colors"
