@@ -1,12 +1,15 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useMemo } from "react";
+
+type PageOrientation = 'portrait' | 'landscape' | 'auto';
 
 interface DocumentPreviewProps {
     htmlContent: string;
     title?: string;
     showHeader?: boolean;
     className?: string;
+    orientation?: PageOrientation;
 }
 
 export function DocumentPreview({
@@ -14,9 +17,63 @@ export function DocumentPreview({
     title = "Document Preview",
     showHeader = true,
     className = "",
+    orientation = "auto",
 }: DocumentPreviewProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Detect page orientation from HTML content
+    const detectedOrientation = useMemo(() => {
+        if (orientation !== 'auto') {
+            return orientation;
+        }
+
+        // Check for landscape indicators in HTML/CSS
+
+        // Check for @page with landscape orientation
+        if (/@page\s*{[^}]*size\s*:\s*[^;]*landscape/i.test(htmlContent)) {
+            return 'landscape';
+        }
+
+        // Check for mso-page-orientation (Microsoft Office format)
+        if (/mso-page-orientation\s*:\s*landscape/i.test(htmlContent)) {
+            return 'landscape';
+        }
+
+        // Check for size specification with landscape dimensions (width > height)
+        // e.g., "size: 297mm 210mm" or "size: 11in 8.5in"
+        const sizeMatch = htmlContent.match(/size\s*:\s*(\d+(?:\.\d+)?)\s*(mm|cm|in|pt)\s+(\d+(?:\.\d+)?)\s*(mm|cm|in|pt)/i);
+        if (sizeMatch) {
+            const width = parseFloat(sizeMatch[1]);
+            const height = parseFloat(sizeMatch[3]);
+            // Convert to same unit for comparison
+            if (sizeMatch[2] === sizeMatch[4] && width > height) {
+                return 'landscape';
+            }
+        }
+
+        // Check for explicit width styles suggesting landscape
+        // Word exports often have style="width:841.9pt" for A4 landscape
+        const widthMatch = htmlContent.match(/style\s*=\s*["'][^"']*width\s*:\s*(\d+(?:\.\d+)?)\s*(pt|px|mm|cm)/i);
+        if (widthMatch) {
+            const widthValue = parseFloat(widthMatch[1]);
+            const unit = widthMatch[2].toLowerCase();
+            // A4 landscape width is ~841pt or ~297mm
+            if ((unit === 'pt' && widthValue > 700) || (unit === 'mm' && widthValue > 250)) {
+                return 'landscape';
+            }
+        }
+
+        return 'portrait';
+    }, [htmlContent, orientation]);
+
+    // Get dimensions based on orientation
+    const { pageWidth, pageHeight } = useMemo(() => {
+        if (detectedOrientation === 'landscape') {
+            return { pageWidth: '297mm', pageHeight: '210mm' };
+        }
+        return { pageWidth: '210mm', pageHeight: '297mm' };
+    }, [detectedOrientation]);
 
     const resizeIframe = useCallback(() => {
         const iframe = iframeRef.current;
@@ -142,12 +199,15 @@ ${htmlContent}
                     className="flex-1 overflow-auto bg-gray-100"
                 >
                     <div className="p-4 min-h-full">
-                        <div className="max-w-[210mm] mx-auto bg-white shadow-lg rounded-sm overflow-hidden">
+                        <div
+                            className="mx-auto bg-white shadow-lg rounded-sm overflow-hidden"
+                            style={{ maxWidth: pageWidth }}
+                        >
                             <iframe
                                 ref={iframeRef}
                                 srcDoc={wrappedHtml}
                                 className="w-full border-0 block"
-                                style={{ minHeight: "297mm" }}
+                                style={{ minHeight: pageHeight }}
                                 title={title}
                                 sandbox="allow-same-origin"
                             />
