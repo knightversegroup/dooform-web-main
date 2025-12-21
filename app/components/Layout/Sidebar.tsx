@@ -17,6 +17,7 @@ import {
   GripVertical,
   Settings,
   Shield,
+  Coins,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 import { useAuth } from "@/lib/auth/context";
@@ -276,7 +277,7 @@ function ResizeHandle({
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, isAuthenticated } = useAuth();
   const {
     width,
     isCollapsed,
@@ -285,6 +286,12 @@ export default function Sidebar() {
     startResizing,
     stopResizing,
   } = useSidebar();
+
+  // Get quota info
+  const quota = user?.quota;
+  const remaining = quota?.remaining ?? 0;
+  const total = quota?.total ?? 0;
+  const showQuota = isAuthenticated && !isAdmin && quota;
 
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -413,6 +420,52 @@ export default function Sidebar() {
             )}
           </ul>
         </nav>
+
+        {/* Quota Display - only show for non-admin authenticated users */}
+        {showQuota && (
+          <div
+            className={`border-t border-neutral-200 ${
+              isCollapsed ? "px-2 py-3" : "px-3.5 py-3"
+            }`}
+          >
+            {isCollapsed ? (
+              <div
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-100"
+                title={`โควต้าคงเหลือ: ${remaining}/${total}`}
+              >
+                <Coins className="w-4 h-4 text-neutral-500" />
+              </div>
+            ) : (
+              <div className="bg-neutral-50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Coins className="w-4 h-4 text-neutral-500" />
+                  <span className="text-xs font-medium text-neutral-600">
+                    โควต้าคงเหลือ
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-2xl font-semibold ${
+                    remaining > 0 ? "text-[#000091]" : "text-red-500"
+                  }`}>
+                    {remaining}
+                  </span>
+                  <span className="text-sm text-neutral-400">/ {total}</span>
+                </div>
+                {/* Progress bar */}
+                <div className="mt-2 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      remaining > 0 ? "bg-[#000091]" : "bg-red-500"
+                    }`}
+                    style={{
+                      width: total > 0 ? `${(remaining / total) * 100}%` : "0%",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Resize Handle - only show when not collapsed */}
         {!isCollapsed && (
