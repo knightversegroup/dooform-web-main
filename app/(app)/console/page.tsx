@@ -34,6 +34,7 @@ import {
 import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
 import { useAuth } from "@/lib/auth/context";
+import { useIsAdmin } from "@/lib/auth/hooks";
 
 // Tab types
 type ConsoleTab = "datatypes" | "entities" | "filters" | "doctypes";
@@ -76,6 +77,7 @@ export default function ConsolePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const isAdmin = useIsAdmin();
 
   // Tab state - read from URL or default to datatypes
   const tabFromUrl = searchParams.get("tab") as ConsoleTab | null;
@@ -108,12 +110,16 @@ export default function ConsolePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
-  // Auth check
+  // Auth check - requires admin role
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace("/login?redirect=/console");
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace("/login?redirect=/console");
+      } else if (!isAdmin) {
+        router.replace("/");
+      }
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, isAdmin, router]);
 
   // Load data for current tab
   useEffect(() => {

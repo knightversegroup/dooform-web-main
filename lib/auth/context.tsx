@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AuthContextType, User, AuthResponse } from './types';
+import type { AuthContextType, User, AuthResponse, RoleName, QuotaInfo } from './types';
 import { apiClient } from '../api/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -165,6 +165,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setRefreshToken(refresh);
   }, []);
 
+  // Role helper functions
+  const hasRole = useCallback((role: RoleName): boolean => {
+    if (!user?.roles) return false;
+    return user.roles.includes(role);
+  }, [user]);
+
+  const isAdmin = Array.isArray(user?.roles) && user.roles.includes('admin');
+
+  // Check if user can generate documents (has quota remaining or is admin)
+  const canGenerate = isAdmin || (user?.quota?.remaining ?? 0) > 0;
+
+  // Refresh quota from server
+  const refreshQuota = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/quota`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            return { ...prevUser, quota: data.data };
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[AuthContext] Failed to refresh quota:', error);
+    }
+  }, [accessToken]);
+
   const value: AuthContextType = {
     user,
     accessToken,
@@ -176,6 +214,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refreshAccessToken,
     updateUser,
     setAuthState,
+    // Role-based helpers
+    isAdmin,
+    hasRole,
+    canGenerate,
+    refreshQuota,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

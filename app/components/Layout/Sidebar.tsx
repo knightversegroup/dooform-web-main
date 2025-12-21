@@ -16,8 +16,10 @@ import {
   LucideIcon,
   GripVertical,
   Settings,
+  Shield,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
+import { useAuth } from "@/lib/auth/context";
 
 // ============================================================================
 // Types
@@ -71,6 +73,11 @@ const SETTINGS_NAV: NavItem = {
   href: "/console",
   icon: Settings,
 };
+
+// Admin navigation (only visible to admins)
+const ADMIN_NAV: NavItem[] = [
+  { label: "จัดการผู้ใช้", href: "/admin/users", icon: Users },
+];
 
 const WORKSPACE_NAV: NavItem[] = [
   { label: "สมาชิก", href: "/workspace/members", icon: Users },
@@ -269,6 +276,7 @@ function ResizeHandle({
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
   const {
     width,
     isCollapsed,
@@ -368,28 +376,41 @@ export default function Sidebar() {
               </li>
             ))}
 
-            {/* Settings Divider */}
-            {!isCollapsed && (
-              <li className="px-3 pt-4 pb-2">
-                <div className="text-sm font-medium text-neutral-400">
-                  ตั้งค่า
-                </div>
-              </li>
+            {/* Admin Section - Only visible to admins */}
+            {isAdmin && (
+              <>
+                {!isCollapsed && (
+                  <li className="px-3 pt-4 pb-2">
+                    <div className="text-sm font-medium text-neutral-400 flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>ผู้ดูแลระบบ</span>
+                    </div>
+                  </li>
+                )}
+                {isCollapsed && (
+                  <li className="pt-4 pb-2">
+                    <div className="w-6 h-px bg-neutral-200" />
+                  </li>
+                )}
+                {/* Console - Admin settings page */}
+                <li>
+                  <NavLink
+                    item={SETTINGS_NAV}
+                    isActive={isActivePath(pathname, SETTINGS_NAV.href)}
+                    isCollapsed={isCollapsed}
+                  />
+                </li>
+                {ADMIN_NAV.map((item) => (
+                  <li key={item.href}>
+                    <NavLink
+                      item={item}
+                      isActive={isActivePath(pathname, item.href)}
+                      isCollapsed={isCollapsed}
+                    />
+                  </li>
+                ))}
+              </>
             )}
-            {isCollapsed && (
-              <li className="pt-4 pb-2">
-                <div className="w-6 h-px bg-neutral-200" />
-              </li>
-            )}
-
-            {/* Console - Single settings page */}
-            <li>
-              <NavLink
-                item={SETTINGS_NAV}
-                isActive={isActivePath(pathname, SETTINGS_NAV.href)}
-                isCollapsed={isCollapsed}
-              />
-            </li>
           </ul>
         </nav>
 

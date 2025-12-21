@@ -1456,6 +1456,174 @@ class ApiClient {
     return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
   }
 
+  // =====================
+  // Admin User Management
+  // =====================
+
+  async getUsers(page = 1, limit = 20, search?: string): Promise<{
+    users: import('../auth/types').UserListItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    if (search) params.append('search', search);
+
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users?${params.toString()}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<import('../auth/types').UsersListResponse>(response, makeRequest);
+    return result.data;
+  }
+
+  async getUser(userId: number): Promise<import('../auth/types').UserListItem> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<{ success: boolean; data: { user: import('../auth/types').UserListItem } }>(response, makeRequest);
+    return result.data.user;
+  }
+
+  async deleteUser(userId: number): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async assignRole(userId: number, roleName: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}/roles`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({ role_name: roleName }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async removeRole(userId: number, roleId: number): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}/roles/${roleId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async getRoles(): Promise<import('../auth/types').Role[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/roles`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<import('../auth/types').RolesListResponse>(response, makeRequest);
+    return result.data.roles;
+  }
+
+  // =====================
+  // Admin Quota Management
+  // =====================
+
+  async setUserQuota(userId: number, amount: number, reason?: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}/quota`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({ amount, reason }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async addQuota(userId: number, amount: number, reason?: string): Promise<{ message: string }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}/quota/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({ amount, reason }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string }>(response, makeRequest);
+  }
+
+  async getUserQuotaHistory(userId: number): Promise<import('../auth/types').QuotaTransaction[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/admin/users/${userId}/quota/history`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<import('../auth/types').QuotaHistoryResponse>(response, makeRequest);
+    return result.data.transactions;
+  }
+
+  // =====================
+  // User Quota (Self)
+  // =====================
+
+  async getMyQuota(): Promise<import('../auth/types').QuotaInfo> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/quota`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<import('../auth/types').QuotaResponse>(response, makeRequest);
+    return result.data;
+  }
+
+  async getMyQuotaHistory(): Promise<import('../auth/types').QuotaTransaction[]> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/quota/history`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    const result = await this.handleResponseWithRetry<import('../auth/types').QuotaHistoryResponse>(response, makeRequest);
+    return result.data.transactions;
+  }
+
+  async useQuota(documentId?: string): Promise<{ message: string; remaining: number }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/quota/use`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({ document_id: documentId }),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ message: string; remaining: number }>(response, makeRequest);
+  }
+
+  async checkQuota(): Promise<{ can_generate: boolean; remaining: number }> {
+    const makeRequest = () => fetch(`${this.baseUrl}/auth/quota/check`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    const response = await makeRequest();
+    return this.handleResponseWithRetry<{ can_generate: boolean; remaining: number }>(response, makeRequest);
+  }
+
   // OCR Methods
 
   async extractTextFromImage(imageFile: File, templateId?: string): Promise<OCRResponse> {

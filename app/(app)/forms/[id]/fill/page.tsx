@@ -90,7 +90,7 @@ interface PageProps {
 export default function FillFormPage({ params }: PageProps) {
   const { id: templateId } = use(params);
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, isAdmin, canGenerate, user, refreshQuota } = useAuth();
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [loading, setLoading] = useState(true);
@@ -565,6 +565,9 @@ export default function FillFormPage({ params }: PageProps) {
         downloadPdfUrl: response.download_pdf_url,
       });
 
+      // Refresh quota after successful generation
+      await refreshQuota();
+
       // Move to download step
       setCurrentStep("download");
     } catch (err) {
@@ -1024,46 +1027,55 @@ export default function FillFormPage({ params }: PageProps) {
 
     if (currentStep === "review") {
       return (
-        <div className="flex gap-2 items-start">
-          <button
-            onClick={handleGoToFill}
-            className="
-              font-['IBM_Plex_Sans_Thai',sans-serif]
-              bg-[#f0f0f0]
-              text-[#5b5b5b]
-              px-[13px] py-[10px]
-              text-base
-              hover:bg-[#e0e0e0]
-              transition-colors
-            "
-          >
-            แก้ไขข้อมูล
-          </button>
-          <button
-            onClick={handleConfirmAndProcess}
-            disabled={processing}
-            className="
-              font-['IBM_Plex_Sans_Thai',sans-serif]
-              bg-[#000091]
-              text-white
-              px-[13px] py-[10px]
-              text-base
-              hover:bg-[#000070]
-              transition-colors
-              disabled:opacity-50
-              disabled:cursor-not-allowed
-              inline-flex items-center gap-2
-            "
-          >
-            {processing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                กำลังสร้าง...
-              </>
-            ) : (
-              "ยืนยันข้อมูล"
-            )}
-          </button>
+        <div className="flex flex-col gap-2 items-start">
+          {/* Quota warning for non-admins */}
+          {!canGenerate && !isAdmin && (
+            <div className="flex items-center gap-2 text-red-600 text-sm mb-2">
+              <AlertTriangle className="w-4 h-4" />
+              <span>คุณไม่มีโควต้าเหลือ กรุณาติดต่อผู้ดูแลระบบ</span>
+            </div>
+          )}
+          <div className="flex gap-2 items-start">
+            <button
+              onClick={handleGoToFill}
+              className="
+                font-['IBM_Plex_Sans_Thai',sans-serif]
+                bg-[#f0f0f0]
+                text-[#5b5b5b]
+                px-[13px] py-[10px]
+                text-base
+                hover:bg-[#e0e0e0]
+                transition-colors
+              "
+            >
+              แก้ไขข้อมูล
+            </button>
+            <button
+              onClick={handleConfirmAndProcess}
+              disabled={processing || !canGenerate}
+              className="
+                font-['IBM_Plex_Sans_Thai',sans-serif]
+                bg-[#000091]
+                text-white
+                px-[13px] py-[10px]
+                text-base
+                hover:bg-[#000070]
+                transition-colors
+                disabled:opacity-50
+                disabled:cursor-not-allowed
+                inline-flex items-center gap-2
+              "
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  กำลังสร้าง...
+                </>
+              ) : (
+                "ยืนยันข้อมูล"
+              )}
+            </button>
+          </div>
         </div>
       );
     }
@@ -1099,13 +1111,41 @@ export default function FillFormPage({ params }: PageProps) {
     <div className="min-h-screen bg-white font-['IBM_Plex_Sans_Thai',sans-serif]">
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
           <Link
             href={`/forms/${templateId}`}
             className="text-sm text-gray-600 hover:text-[#0b4db7]"
           >
             ← กลับไปหน้ารายละเอียด
           </Link>
+
+          {/* Quota Display */}
+          {!isAdmin && user?.quota && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-500">โควต้าคงเหลือ:</span>
+              <span className={`font-medium ${user.quota.remaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {user.quota.remaining} / {user.quota.total}
+              </span>
+              {user.quota.remaining === 0 && (
+                <span className="flex items-center gap-1 text-red-600">
+                  <AlertTriangle className="w-4 h-4" />
+                  หมดโควต้า
+                </span>
+              )}
+              {user.quota.remaining > 0 && user.quota.remaining <= 3 && (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="w-4 h-4" />
+                  ใกล้หมด
+                </span>
+              )}
+            </div>
+          )}
+          {isAdmin && (
+            <span className="text-sm text-purple-600 font-medium flex items-center gap-1">
+              <Sparkles className="w-4 h-4" />
+              ผู้ดูแลระบบ (ไม่จำกัดโควต้า)
+            </span>
+          )}
         </div>
       </div>
 

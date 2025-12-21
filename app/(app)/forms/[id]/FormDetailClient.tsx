@@ -61,7 +61,7 @@ interface PageProps {
 export default function FormDetailClient({ params }: PageProps) {
     const { id: templateId } = use(params);
     const router = useRouter();
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -397,25 +397,30 @@ export default function FormDetailClient({ params }: PageProps) {
                                         <Eye className="w-4 h-4" />
                                         ดูตัวอย่างเทมเพลต
                                     </Link>
-                                    <Link
-                                        href={`/forms/${templateId}/edit`}
-                                        className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-sm hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                        แก้ไขข้อมูล
-                                    </Link>
-                                    <button
-                                        onClick={handleDeleteTemplate}
-                                        disabled={deleting}
-                                        className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-red-300 text-red-600 text-sm rounded-sm hover:bg-red-50 transition-colors disabled:opacity-50"
-                                    >
-                                        {deleting ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Trash2 className="w-4 h-4" />
-                                        )}
-                                        {deleting ? "กำลังลบ..." : "ลบเทมเพลต"}
-                                    </button>
+                                    {/* Admin-only actions */}
+                                    {isAdmin && (
+                                        <>
+                                            <Link
+                                                href={`/forms/${templateId}/edit`}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-sm hover:bg-gray-50 transition-colors"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                                แก้ไขข้อมูล
+                                            </Link>
+                                            <button
+                                                onClick={handleDeleteTemplate}
+                                                disabled={deleting}
+                                                className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-red-300 text-red-600 text-sm rounded-sm hover:bg-red-50 transition-colors disabled:opacity-50"
+                                            >
+                                                {deleting ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
+                                                {deleting ? "กำลังลบ..." : "ลบเทมเพลต"}
+                                            </button>
+                                        </>
+                                    )}
                                 </>
                             ) : (
                                 <>
