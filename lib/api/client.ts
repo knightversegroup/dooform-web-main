@@ -540,7 +540,7 @@ class ApiClient {
 
   // Regenerate document from history
   async regenerateDocument(documentId: string): Promise<ProcessResponse> {
-    const makeRequest = () => fetch(`${this.baseUrl}/documents/${documentId}/regenerate`, {
+    const makeRequest = () => fetch(`${this.baseUrl}/regenerate/${documentId}`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
     });
