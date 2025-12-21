@@ -156,12 +156,32 @@ export default function FillFormPage({ params }: PageProps) {
     }
   }, [authLoading, isAuthenticated, router, templateId]);
 
-  // Redirect to template page if user has no quota (and is not admin)
+  // Refresh quota and redirect to template page if user has no quota (and is not admin)
+  const [quotaRefreshed, setQuotaRefreshed] = useState(false);
+
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !isAdmin && !canGenerate) {
+    const checkQuotaAndRedirect = async () => {
+      if (!authLoading && isAuthenticated && !isAdmin) {
+        // Refresh quota from server first
+        await refreshQuota();
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          setQuotaRefreshed(true);
+        }, 100);
+      } else if (!authLoading && isAuthenticated && isAdmin) {
+        // Admin users don't need quota check
+        setQuotaRefreshed(true);
+      }
+    };
+    checkQuotaAndRedirect();
+  }, [authLoading, isAuthenticated, isAdmin, refreshQuota]);
+
+  // After quota is refreshed, check if user can generate
+  useEffect(() => {
+    if (quotaRefreshed && !isAdmin && !canGenerate) {
       router.replace(`/forms/${templateId}?error=no_quota`);
     }
-  }, [authLoading, isAuthenticated, isAdmin, canGenerate, router, templateId]);
+  }, [quotaRefreshed, canGenerate, isAdmin, router, templateId]);
 
   useEffect(() => {
     const loadTemplate = async () => {

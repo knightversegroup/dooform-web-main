@@ -63,7 +63,7 @@ export default function FormDetailClient({ params }: PageProps) {
     const { id: templateId } = use(params);
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { isAuthenticated, isLoading: authLoading, isAdmin, canGenerate, user } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, isAdmin, canGenerate, user, refreshQuota } = useAuth();
     const [template, setTemplate] = useState<Template | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -72,6 +72,13 @@ export default function FormDetailClient({ params }: PageProps) {
 
     // Check for quota error from redirect
     const quotaError = searchParams.get("error") === "no_quota";
+
+    // Refresh quota when page loads (in case admin added quota)
+    useEffect(() => {
+        if (isAuthenticated && !authLoading) {
+            refreshQuota();
+        }
+    }, [isAuthenticated, authLoading, refreshQuota]);
 
     // Delete template handler
     const handleDeleteTemplate = async () => {
