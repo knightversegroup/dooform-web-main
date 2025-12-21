@@ -23,7 +23,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, FieldDefinition } from "@/lib/api/types";
+import { Template, FieldDefinition, PageOrientation } from "@/lib/api/types";
 import { Button } from "@/app/components/ui/Button";
 import { SmartInput } from "@/app/components/ui/SmartInput";
 import { OCRScanner } from "@/app/components/ui/OCRScanner";
@@ -1191,6 +1191,7 @@ export default function FillFormPage({ params }: PageProps) {
                     <DocumentPreview
                       htmlContent={previewHtml}
                       showHeader={false}
+                      orientation={template?.page_orientation || 'auto'}
                     />
                   </div>
                 </div>

@@ -40,6 +40,9 @@ export type Entity =
 
 export type InputType = 'text' | 'select' | 'date' | 'time' | 'number' | 'textarea' | 'checkbox' | 'merged' | 'radio';
 
+// Page orientation type
+export type PageOrientation = 'portrait' | 'landscape';
+
 // Radio option for radio group input type
 export interface RadioOption {
   placeholder: string;   // The placeholder key (e.g., "$1", "$2")
@@ -231,6 +234,9 @@ export interface Template {
   variant_name?: string;      // Name of variant (e.g., "ด้านหน้า", "ด้านหลัง")
   variant_order?: number;     // Display order within document type
   document_type?: DocumentType; // Populated when include_document_type=true
+
+  // Page orientation (detected from DOCX)
+  page_orientation?: PageOrientation;
 
   // Timestamps
   created_at: string;
