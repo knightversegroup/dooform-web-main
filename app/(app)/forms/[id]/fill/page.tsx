@@ -229,14 +229,14 @@ export default function FillFormPage({ params }: PageProps) {
             apiClient.getConfigurableDataTypes(true).catch(() => [] as ConfigurableDataType[]),
           ]);
 
-          // Enhance field definitions with digitFormat/locationOutputFormat from configurable data types
+          // Enhance field definitions with digitFormat/locationOutputFormat/options from configurable data types
           const enhancedDefinitions: Record<string, FieldDefinition> = {};
           Object.entries(definitions).forEach(([key, def]) => {
             const enhanced = { ...def };
+            const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
 
             // If inputType is 'digit' and no digitFormat, look it up from configurable data type
             if (enhanced.inputType === 'digit' && !enhanced.digitFormat) {
-              const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
               if (dataTypeConfig?.default_value) {
                 enhanced.digitFormat = dataTypeConfig.default_value;
               }
@@ -244,9 +244,25 @@ export default function FillFormPage({ params }: PageProps) {
 
             // If inputType is 'location' and no locationOutputFormat, look it up from configurable data type
             if (enhanced.inputType === 'location' && !enhanced.locationOutputFormat) {
-              const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
               if (dataTypeConfig?.default_value) {
                 enhanced.locationOutputFormat = dataTypeConfig.default_value as FieldDefinition['locationOutputFormat'];
+              }
+            }
+
+            // If inputType is 'select' and no validation.options, look it up from configurable data type
+            if (enhanced.inputType === 'select' && (!enhanced.validation?.options || enhanced.validation.options.length === 0)) {
+              if (dataTypeConfig?.options) {
+                try {
+                  const parsedOptions = JSON.parse(dataTypeConfig.options);
+                  if (Array.isArray(parsedOptions) && parsedOptions.length > 0) {
+                    enhanced.validation = {
+                      ...enhanced.validation,
+                      options: parsedOptions,
+                    };
+                  }
+                } catch (e) {
+                  console.error('Failed to parse options for data type:', dataTypeConfig.code, e);
+                }
               }
             }
 
