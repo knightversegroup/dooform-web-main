@@ -107,6 +107,9 @@ export interface FieldDefinition {
 
   // Digit input properties (for OTP, license plates, ID segments, etc.)
   digitFormat?: DigitFormat; // Pattern like "XX-X-XXX-XXXX" where X=digit, A=letter, others are separators
+
+  // Data type label (loaded from configurable data types)
+  dataTypeLabel?: string; // Human-readable label for the data type
 }
 
 // Detected mergeable group from placeholders

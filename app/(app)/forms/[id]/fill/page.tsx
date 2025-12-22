@@ -264,6 +264,26 @@ export default function FillFormPage({ params }: PageProps) {
               }
             }
 
+            // Load validation rules (pattern, minLength, maxLength, etc.) from configurable data type
+            if (dataTypeConfig?.validation) {
+              try {
+                const parsedValidation = JSON.parse(dataTypeConfig.validation);
+                if (parsedValidation && typeof parsedValidation === 'object') {
+                  enhanced.validation = {
+                    ...enhanced.validation,
+                    ...parsedValidation,
+                  };
+                }
+              } catch (e) {
+                console.error('Failed to parse validation for data type:', dataTypeConfig.code, e);
+              }
+            }
+
+            // Load data type label from configurable data type
+            if (dataTypeConfig?.name) {
+              enhanced.dataTypeLabel = dataTypeConfig.name;
+            }
+
             enhancedDefinitions[key] = enhanced;
           });
 

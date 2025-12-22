@@ -138,28 +138,8 @@ export const ENTITY_LABELS: Record<Entity, string> = {
     general: 'ทั่วไป',
 };
 
-// Data type labels in Thai
-export const DATA_TYPE_LABELS: Record<DataType, string> = {
-    text: 'ข้อความ',
-    id_number: 'เลขบัตรประชาชน',
-    date: 'วันที่',
-    time: 'เวลา',
-    number: 'ตัวเลข',
-    address: 'ที่อยู่',
-    province: 'จังหวัด',
-    district: 'อำเภอ/เขต',
-    subdistrict: 'ตำบล/แขวง',
-    country: 'ประเทศ',
-    name_prefix: 'คำนำหน้าชื่อ',
-    name: 'ชื่อ',
-    weekday: 'วันในสัปดาห์',
-    phone: 'เบอร์โทรศัพท์',
-    email: 'อีเมล',
-    house_code: 'รหัสบ้าน',
-    zodiac: 'ปีนักษัตร',
-    lunar_month: 'เดือนจันทรคติ',
-    officer_name: 'ชื่อเจ้าหน้าที่',
-};
+// NOTE: Data type labels are now loaded from Configurable Data Types in the console.
+// Use the 'name' field from ConfigurableDataType instead of hardcoded labels.
 
 // Auto-detect field type from placeholder name
 export function detectFieldType(placeholder: string): FieldDefinition {
@@ -178,16 +158,11 @@ export function detectFieldType(placeholder: string): FieldDefinition {
         inputType: 'text',
     };
 
-    // ID Number patterns
+    // ID Number patterns - validation comes from configurable data types
     if (lowerKey.includes('_id') || lowerKey === 'id_number' || lowerKey === 'id') {
         definition.dataType = 'id_number';
         definition.inputType = 'text';
-        definition.validation = {
-            pattern: '^\\d{13}$',
-            maxLength: 13,
-            minLength: 13,
-        };
-        definition.description = 'เลขบัตรประชาชน 13 หลัก';
+        // Validation is loaded from configurable data types, not hardcoded
         return definition;
     }
 
@@ -736,9 +711,6 @@ export function validateField(value: string, definition: FieldDefinition): { val
     if (pattern) {
         const regex = new RegExp(pattern);
         if (!regex.test(value)) {
-            if (definition.dataType === 'id_number') {
-                return { valid: false, error: 'กรุณากรอกเลขบัตรประชาชน 13 หลัก' };
-            }
             return { valid: false, error: 'รูปแบบข้อมูลไม่ถูกต้อง' };
         }
     }

@@ -13,8 +13,8 @@ import {
     FileText,
     Check,
 } from "lucide-react";
-import type { FieldDefinition, DataType, Entity } from "@/lib/api/types";
-import { DATA_TYPE_LABELS, ENTITY_LABELS } from "@/lib/utils/fieldTypes";
+import type { FieldDefinition, DataType, Entity, ConfigurableDataType } from "@/lib/api/types";
+import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 
 // Node types for the flow
 type NodeType = "trigger" | "placeholder" | "datatype" | "entity" | "output";
@@ -66,6 +66,7 @@ interface PlaceholderFlowMapperProps {
     fieldDefinitions: Record<string, FieldDefinition>;
     onFieldUpdate: (fieldKey: string, updates: Partial<FieldDefinition>) => void;
     aliases?: Record<string, string>;
+    dataTypes?: ConfigurableDataType[]; // Configurable data types for labels
 }
 
 // Individual Flow Node Component
@@ -77,6 +78,7 @@ function FlowNodeComponent({
     onEntityChange,
     isExpanded,
     onToggleExpand,
+    dataTypes,
 }: {
     node: FlowNode;
     definition?: FieldDefinition;
@@ -85,7 +87,13 @@ function FlowNodeComponent({
     onEntityChange: (entity: Entity) => void;
     isExpanded: boolean;
     onToggleExpand: () => void;
+    dataTypes?: ConfigurableDataType[];
 }) {
+    // Helper to get data type label
+    const getDataTypeLabel = (code: string): string => {
+        const dt = dataTypes?.find(d => d.code === code);
+        return dt?.name || code;
+    };
     const [showDataTypeMenu, setShowDataTypeMenu] = useState(false);
     const [showEntityMenu, setShowEntityMenu] = useState(false);
     const dataTypeRef = useRef<HTMLDivElement>(null);
@@ -164,29 +172,29 @@ function FlowNodeComponent({
                                 `}
                             >
                                 <Database className="w-3 h-3" />
-                                {DATA_TYPE_LABELS[definition?.dataType || "text"]}
+                                {getDataTypeLabel(definition?.dataType || "text")}
                                 <ChevronDown className="w-3 h-3" />
                             </button>
 
                             {showDataTypeMenu && (
                                 <div className="absolute top-full right-0 mt-1 z-50 bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-[180px] max-h-64 overflow-y-auto">
-                                    {Object.entries(DATA_TYPE_LABELS).map(([value, label]) => (
+                                    {(dataTypes || []).map((dt) => (
                                         <button
-                                            key={value}
+                                            key={dt.code}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onDataTypeChange(value as DataType);
+                                                onDataTypeChange(dt.code as DataType);
                                                 setShowDataTypeMenu(false);
                                             }}
                                             className={`
                                                 w-full px-3 py-2 text-left text-sm flex items-center gap-2
                                                 hover:bg-gray-50 transition-colors
-                                                ${definition?.dataType === value ? "bg-primary/10 text-primary" : ""}
+                                                ${definition?.dataType === dt.code ? "bg-primary/10 text-primary" : ""}
                                             `}
                                         >
-                                            <span>{DATATYPE_COLORS[value]?.icon || "📝"}</span>
-                                            <span>{label}</span>
-                                            {definition?.dataType === value && (
+                                            <span>{DATATYPE_COLORS[dt.code]?.icon || "📝"}</span>
+                                            <span>{dt.name}</span>
+                                            {definition?.dataType === dt.code && (
                                                 <Check className="w-4 h-4 ml-auto text-primary" />
                                             )}
                                         </button>
@@ -305,6 +313,7 @@ function EntityGroup({
     onFieldUpdate,
     expandedFields,
     onToggleField,
+    dataTypes,
 }: {
     entity: Entity;
     fields: Array<{ key: string; definition: FieldDefinition }>;
@@ -312,6 +321,7 @@ function EntityGroup({
     onFieldUpdate: (fieldKey: string, updates: Partial<FieldDefinition>) => void;
     expandedFields: Set<string>;
     onToggleField: (key: string) => void;
+    dataTypes?: ConfigurableDataType[];
 }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const entityColor = ENTITY_COLORS[entity];
@@ -370,6 +380,7 @@ function EntityGroup({
                             onEntityChange={(entity) => onFieldUpdate(key, { entity })}
                             isExpanded={expandedFields.has(key)}
                             onToggleExpand={() => onToggleField(key)}
+                            dataTypes={dataTypes}
                         />
                     ))}
                 </div>
@@ -382,6 +393,7 @@ export function PlaceholderFlowMapper({
     fieldDefinitions,
     onFieldUpdate,
     aliases,
+    dataTypes,
 }: PlaceholderFlowMapperProps) {
     const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
     const [viewMode, setViewMode] = useState<"flow" | "list">("flow");
@@ -516,6 +528,7 @@ export function PlaceholderFlowMapper({
                             onFieldUpdate={onFieldUpdate}
                             expandedFields={expandedFields}
                             onToggleField={toggleField}
+                            dataTypes={dataTypes}
                         />
                     );
                 })}

@@ -41,7 +41,6 @@ function formatTextCase(text: string, format: TextCaseFormat): string {
 }
 import {
     validateField,
-    DATA_TYPE_LABELS,
     DATE_FORMAT_OPTIONS,
     formatDateToDisplay,
     parseDateToISO,
@@ -627,29 +626,6 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                 );
             }
 
-            // ID Number input (special formatting)
-            if (dataType === 'id_number') {
-                return (
-                    <input
-                        ref={ref as React.Ref<HTMLInputElement>}
-                        type="text"
-                        value={value}
-                        onChange={(e) => {
-                            // Only allow digits
-                            const digits = e.target.value.replace(/\D/g, '').slice(0, 13);
-                            handleChange(digits);
-                        }}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        disabled={disabled}
-                        placeholder="X-XXXX-XXXXX-XX-X"
-                        maxLength={13}
-                        inputMode="numeric"
-                        className={baseInputClass}
-                    />
-                );
-            }
-
             // Digit block input (for OTP, license plates, ID segments, etc.)
             if (inputType === 'digit') {
                 // Use digitFormat from definition, or default to 6-digit OTP format
@@ -941,7 +917,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                             {label}
                         </label>
                         <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-text-muted px-1.5 py-0.5 bg-surface-alt rounded flex-shrink-0`}>
-                            {DATA_TYPE_LABELS[definition.dataType] || definition.dataType}
+                            {definition.dataTypeLabel || definition.dataType}
                         </span>
                     </div>
                 )}
