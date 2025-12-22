@@ -38,7 +38,12 @@ export type Entity =
   | 'registrar'
   | 'general';
 
-export type InputType = 'text' | 'select' | 'date' | 'time' | 'number' | 'textarea' | 'checkbox' | 'merged' | 'radio' | 'location';
+export type InputType = 'text' | 'select' | 'date' | 'time' | 'number' | 'textarea' | 'checkbox' | 'merged' | 'radio' | 'location' | 'digit';
+
+// Digit format pattern - defines the structure of digit blocks
+// Format: Use 'X' for digit, 'A' for letter, '-' or other chars as separators
+// Examples: "XX-X-XXX-XXXX" for license plate, "XXX-XXX" for OTP
+export type DigitFormat = string;
 
 // Location output format - determines which administrative boundary fields are returned
 export type LocationOutputFormat =
@@ -99,6 +104,9 @@ export interface FieldDefinition {
 
   // Location input properties (for Thai administrative boundary selection)
   locationOutputFormat?: LocationOutputFormat; // Which fields to output (province, district, subdistrict, all_english, etc.)
+
+  // Digit input properties (for OTP, license plates, ID segments, etc.)
+  digitFormat?: DigitFormat; // Pattern like "XX-X-XXX-XXXX" where X=digit, A=letter, others are separators
 }
 
 // Detected mergeable group from placeholders

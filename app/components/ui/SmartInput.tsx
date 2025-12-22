@@ -50,6 +50,323 @@ import {
 import { AddressAutocomplete, AddressSearchLevel } from "./AddressAutocomplete";
 import { AddressSelection } from "@/lib/api/addressService";
 
+// Parse digit format pattern into segments
+// Format: Use 'X' for digit, 'A' for letter, other chars are separators
+// Examples: "XX-X-XXX-XXXX" for license plate, "XXXXXX" for 6-digit OTP
+interface DigitSegment {
+    type: 'input' | 'separator';
+    value: string; // For separator, the separator char(s). For input, 'X' or 'A' pattern
+    charType: 'digit' | 'letter' | 'any'; // For input segments
+    length: number; // For input segments, how many chars
+}
+
+function parseDigitFormat(format: string): DigitSegment[] {
+    const segments: DigitSegment[] = [];
+    let currentInput = '';
+    let currentCharType: 'digit' | 'letter' | 'any' = 'digit';
+    let currentSeparator = '';
+
+    for (let i = 0; i < format.length; i++) {
+        const char = format[i];
+
+        if (char === 'X' || char === 'x') {
+            // Digit placeholder
+            if (currentSeparator) {
+                segments.push({ type: 'separator', value: currentSeparator, charType: 'any', length: 0 });
+                currentSeparator = '';
+            }
+            if (currentInput && currentCharType !== 'digit') {
+                segments.push({ type: 'input', value: currentInput, charType: currentCharType, length: currentInput.length });
+                currentInput = '';
+            }
+            currentInput += char;
+            currentCharType = 'digit';
+        } else if (char === 'A' || char === 'a') {
+            // Letter placeholder
+            if (currentSeparator) {
+                segments.push({ type: 'separator', value: currentSeparator, charType: 'any', length: 0 });
+                currentSeparator = '';
+            }
+            if (currentInput && currentCharType !== 'letter') {
+                segments.push({ type: 'input', value: currentInput, charType: currentCharType, length: currentInput.length });
+                currentInput = '';
+            }
+            currentInput += char;
+            currentCharType = 'letter';
+        } else {
+            // Separator character
+            if (currentInput) {
+                segments.push({ type: 'input', value: currentInput, charType: currentCharType, length: currentInput.length });
+                currentInput = '';
+            }
+            currentSeparator += char;
+        }
+    }
+
+    // Push any remaining content
+    if (currentInput) {
+        segments.push({ type: 'input', value: currentInput, charType: currentCharType, length: currentInput.length });
+    }
+    if (currentSeparator) {
+        segments.push({ type: 'separator', value: currentSeparator, charType: 'any', length: 0 });
+    }
+
+    return segments;
+}
+
+// Parse value back based on format (extract only input characters)
+function parseValueFromFormat(value: string, segments: DigitSegment[]): string[] {
+    const inputSegments = segments.filter(s => s.type === 'input');
+    const values: string[] = [];
+    let valueIndex = 0;
+
+    // Try to parse with separators first
+    let separatorPattern = '';
+    for (const seg of segments) {
+        if (seg.type === 'separator') {
+            separatorPattern += seg.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        } else {
+            separatorPattern += `(.{0,${seg.length}})`;
+        }
+    }
+
+    const regex = new RegExp(`^${separatorPattern}$`);
+    const match = value.match(regex);
+
+    if (match) {
+        // Value matches the format with separators
+        for (let i = 1; i < match.length; i++) {
+            values.push(match[i] || '');
+        }
+    } else {
+        // Value doesn't have separators, just split by length
+        const cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
+        for (const seg of inputSegments) {
+            values.push(cleanValue.slice(valueIndex, valueIndex + seg.length));
+            valueIndex += seg.length;
+        }
+    }
+
+    return values;
+}
+
+// Combine values with format separators
+function combineValuesWithFormat(values: string[], segments: DigitSegment[]): string {
+    let result = '';
+    let inputIndex = 0;
+
+    for (const seg of segments) {
+        if (seg.type === 'separator') {
+            result += seg.value;
+        } else {
+            result += values[inputIndex] || '';
+            inputIndex++;
+        }
+    }
+
+    return result;
+}
+
+// DigitBlockInput component - Individual character boxes grouped by separator
+interface DigitBlockInputProps {
+    format: string;
+    value: string;
+    onChange: (value: string) => void;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    disabled?: boolean;
+    compact?: boolean;
+}
+
+function DigitBlockInput({ format, value, onChange, onFocus, onBlur, disabled, compact }: DigitBlockInputProps) {
+    const segments = parseDigitFormat(format);
+
+    // Calculate total input count for refs
+    const totalInputs = segments.reduce((sum, seg) => sum + (seg.type === 'input' ? seg.length : 0), 0);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    // Parse value into individual characters
+    const getAllChars = (): string[] => {
+        const chars: string[] = [];
+        let valueIndex = 0;
+        const cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
+
+        for (const seg of segments) {
+            if (seg.type === 'input') {
+                for (let i = 0; i < seg.length; i++) {
+                    chars.push(cleanValue[valueIndex] || '');
+                    valueIndex++;
+                }
+            }
+        }
+        return chars;
+    };
+
+    const charValues = getAllChars();
+
+    // Combine all character values back to format string
+    const combineCharsToFormat = (chars: string[]): string => {
+        let result = '';
+        let charIndex = 0;
+
+        for (const seg of segments) {
+            if (seg.type === 'separator') {
+                result += seg.value;
+            } else {
+                for (let i = 0; i < seg.length; i++) {
+                    result += chars[charIndex] || '';
+                    charIndex++;
+                }
+            }
+        }
+        return result;
+    };
+
+    const handleCharChange = (globalIndex: number, newValue: string, charType: 'digit' | 'letter' | 'any') => {
+        // Filter based on char type
+        let filtered = newValue.slice(-1); // Only take last character (for overwrite)
+        if (charType === 'digit') {
+            filtered = filtered.replace(/\D/g, '');
+        } else if (charType === 'letter') {
+            filtered = filtered.replace(/[^a-zA-Z]/g, '').toUpperCase();
+        }
+
+        // Update chars array
+        const newChars = [...charValues];
+        newChars[globalIndex] = filtered;
+
+        // Combine and emit
+        const combined = combineCharsToFormat(newChars);
+        onChange(combined);
+
+        // Auto-focus next input if this one is filled
+        if (filtered && globalIndex < totalInputs - 1) {
+            setTimeout(() => {
+                inputRefs.current[globalIndex + 1]?.focus();
+            }, 0);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, globalIndex: number) => {
+        // Handle backspace to go to previous input
+        if (e.key === 'Backspace') {
+            if (charValues[globalIndex] === '' && globalIndex > 0) {
+                e.preventDefault();
+                inputRefs.current[globalIndex - 1]?.focus();
+            } else if (charValues[globalIndex] !== '') {
+                // Clear current and stay
+                const newChars = [...charValues];
+                newChars[globalIndex] = '';
+                const combined = combineCharsToFormat(newChars);
+                onChange(combined);
+                e.preventDefault();
+            }
+        }
+        // Handle arrow keys
+        if (e.key === 'ArrowLeft' && globalIndex > 0) {
+            e.preventDefault();
+            inputRefs.current[globalIndex - 1]?.focus();
+        }
+        if (e.key === 'ArrowRight' && globalIndex < totalInputs - 1) {
+            e.preventDefault();
+            inputRefs.current[globalIndex + 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>, globalIndex: number) => {
+        e.preventDefault();
+        const pastedText = e.clipboardData.getData('text');
+        const cleanText = pastedText.replace(/[^a-zA-Z0-9]/g, '');
+
+        const newChars = [...charValues];
+        let textIndex = 0;
+        let charIndex = 0;
+        let currentGlobalIndex = 0;
+
+        // Find the segment and position for globalIndex
+        for (const seg of segments) {
+            if (seg.type === 'input') {
+                for (let i = 0; i < seg.length; i++) {
+                    if (currentGlobalIndex >= globalIndex && textIndex < cleanText.length) {
+                        const char = cleanText[textIndex];
+                        if (seg.charType === 'digit' && /\d/.test(char)) {
+                            newChars[currentGlobalIndex] = char;
+                            textIndex++;
+                        } else if (seg.charType === 'letter' && /[a-zA-Z]/.test(char)) {
+                            newChars[currentGlobalIndex] = char.toUpperCase();
+                            textIndex++;
+                        } else if (seg.charType === 'any') {
+                            newChars[currentGlobalIndex] = char;
+                            textIndex++;
+                        } else {
+                            textIndex++; // Skip incompatible
+                            i--; // Retry this position
+                        }
+                    }
+                    currentGlobalIndex++;
+                }
+                charIndex++;
+            }
+        }
+
+        const combined = combineCharsToFormat(newChars);
+        onChange(combined);
+    };
+
+    const boxSize = compact ? 'w-8 h-9 text-sm' : 'w-10 h-11 text-base';
+    const inputClass = `text-center font-mono ${boxSize} text-foreground bg-background border border-border-default rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:bg-surface-alt`;
+
+    let globalInputIndex = 0;
+
+    return (
+        <div className="flex items-center gap-3 flex-wrap">
+            {segments.map((segment, segIdx) => {
+                if (segment.type === 'separator') {
+                    return (
+                        <span key={`sep-${segIdx}`} className="text-text-muted font-bold text-lg px-1">
+                            {segment.value === ' ' ? '' : segment.value}
+                        </span>
+                    );
+                }
+
+                // Render a group of individual character inputs
+                const groupInputs: React.ReactNode[] = [];
+                const startIndex = globalInputIndex;
+
+                for (let i = 0; i < segment.length; i++) {
+                    const currentIndex = globalInputIndex;
+                    const placeholder = segment.charType === 'digit' ? '0' : segment.charType === 'letter' ? 'A' : '?';
+                    groupInputs.push(
+                        <input
+                            key={`char-${currentIndex}`}
+                            ref={(el) => { inputRefs.current[currentIndex] = el; }}
+                            type="text"
+                            value={charValues[currentIndex] || ''}
+                            onChange={(e) => handleCharChange(currentIndex, e.target.value, segment.charType)}
+                            onKeyDown={(e) => handleKeyDown(e, currentIndex)}
+                            onPaste={(e) => handlePaste(e, currentIndex)}
+                            onFocus={onFocus}
+                            onBlur={onBlur}
+                            disabled={disabled}
+                            placeholder={placeholder}
+                            maxLength={1}
+                            inputMode={segment.charType === 'digit' ? 'numeric' : 'text'}
+                            className={inputClass}
+                        />
+                    );
+                    globalInputIndex++;
+                }
+
+                return (
+                    <div key={`group-${segIdx}`} className="flex items-center gap-1 bg-surface-alt/30 p-1 rounded-lg">
+                        {groupInputs}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 interface SmartInputProps {
     definition: FieldDefinition;
     value: string;
@@ -329,6 +646,23 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                         maxLength={13}
                         inputMode="numeric"
                         className={baseInputClass}
+                    />
+                );
+            }
+
+            // Digit block input (for OTP, license plates, ID segments, etc.)
+            if (inputType === 'digit') {
+                // Use digitFormat from definition, or default to 6-digit OTP format
+                const format = definition.digitFormat || 'XXXXXX';
+                return (
+                    <DigitBlockInput
+                        format={format}
+                        value={value}
+                        onChange={handleChange}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        disabled={disabled}
+                        compact={compact}
                     />
                 );
             }

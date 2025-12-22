@@ -45,6 +45,117 @@ const ENTITY_COLOR_MAP: Record<Entity, number> = {
     general: 6,
 };
 
+// Compact Digit Format Builder for form editor settings panel
+interface DigitFormatBuilderCompactProps {
+    value: string;
+    onChange: (value: string) => void;
+    disabled?: boolean;
+}
+
+function DigitFormatBuilderCompact({ value, onChange, disabled }: DigitFormatBuilderCompactProps) {
+    const parseFormatToBlocks = (format: string): { type: 'digit' | 'letter' | 'separator'; char: string }[] => {
+        if (!format) return [];
+        return format.split('').map(char => {
+            if (char === 'X' || char === 'x') return { type: 'digit' as const, char: 'X' };
+            if (char === 'A' || char === 'a') return { type: 'letter' as const, char: 'A' };
+            return { type: 'separator' as const, char };
+        });
+    };
+
+    const blocks = parseFormatToBlocks(value);
+
+    const addBlock = (type: 'digit' | 'letter' | 'separator', char?: string) => {
+        if (disabled) return;
+        const newChar = type === 'digit' ? 'X' : type === 'letter' ? 'A' : (char || '-');
+        onChange(value + newChar);
+    };
+
+    const removeBlock = (index: number) => {
+        if (disabled) return;
+        const newValue = value.slice(0, index) + value.slice(index + 1);
+        onChange(newValue);
+    };
+
+    return (
+        <div className="space-y-2">
+            {/* Visual blocks */}
+            <div className="flex flex-wrap items-center gap-0.5 min-h-[32px] p-1.5 bg-white border border-amber-300 rounded">
+                {blocks.length === 0 ? (
+                    <span className="text-gray-400 text-[10px]">คลิกปุ่มเพื่อเพิ่ม</span>
+                ) : (
+                    blocks.map((block, idx) => (
+                        <div
+                            key={idx}
+                            onClick={() => removeBlock(idx)}
+                            className={`
+                                relative group cursor-pointer transition-all
+                                ${block.type === 'digit'
+                                    ? 'w-6 h-6 bg-blue-100 border border-blue-300 rounded flex items-center justify-center text-blue-700 font-mono text-[10px] font-bold hover:bg-blue-200'
+                                    : block.type === 'letter'
+                                    ? 'w-6 h-6 bg-green-100 border border-green-300 rounded flex items-center justify-center text-green-700 font-mono text-[10px] font-bold hover:bg-green-200'
+                                    : 'px-0.5 h-6 flex items-center justify-center text-gray-500 font-bold text-sm hover:bg-gray-100 rounded'
+                                }
+                                ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                            `}
+                            title={disabled ? '' : 'คลิกเพื่อลบ'}
+                        >
+                            {block.type === 'digit' ? '0' : block.type === 'letter' ? 'A' : block.char}
+                            {!disabled && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    ×
+                                </span>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Add buttons */}
+            <div className="flex flex-wrap gap-1">
+                <button
+                    type="button"
+                    onClick={() => addBlock('digit')}
+                    disabled={disabled}
+                    className="flex items-center gap-1 px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-[10px] font-medium disabled:opacity-50"
+                >
+                    <span className="w-4 h-4 bg-blue-200 rounded flex items-center justify-center text-[8px] font-bold">0</span>
+                    เลข
+                </button>
+                <button
+                    type="button"
+                    onClick={() => addBlock('letter')}
+                    disabled={disabled}
+                    className="flex items-center gap-1 px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded text-[10px] font-medium disabled:opacity-50"
+                >
+                    <span className="w-4 h-4 bg-green-200 rounded flex items-center justify-center text-[8px] font-bold">A</span>
+                    อักษร
+                </button>
+                <button
+                    type="button"
+                    onClick={() => addBlock('separator', '-')}
+                    disabled={disabled}
+                    className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[10px] font-medium disabled:opacity-50"
+                >
+                    ขีด
+                </button>
+                <button
+                    type="button"
+                    onClick={() => addBlock('separator', '/')}
+                    disabled={disabled}
+                    className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[10px] font-medium disabled:opacity-50"
+                >
+                    ทับ
+                </button>
+            </div>
+
+            {/* Format preview */}
+            <div className="text-[10px] text-amber-600">
+                รูปแบบ: <code className="bg-amber-100 px-1 rounded font-mono">{value || '(ว่าง)'}</code>
+            </div>
+        </div>
+    );
+}
+
 // DataType to InputType mapping - each dataType has a default inputType
 const DATA_TYPE_INPUT_MAP: Record<DataType, InputType> = {
     text: 'text',
@@ -240,9 +351,26 @@ function FieldRow({
                                 value={field.definition.dataType}
                                 onChange={(e) => {
                                     const newDataType = e.target.value as DataType;
-                                    // Auto-set inputType based on dataType
-                                    const newInputType = DATA_TYPE_INPUT_MAP[newDataType] || 'text';
-                                    onFieldDefinitionChange({ dataType: newDataType, inputType: newInputType });
+                                    // Get input_type from configurable dataType, fallback to hardcoded map
+                                    const dataTypeConfig = dataTypes?.find(dt => dt.code === newDataType);
+                                    const newInputType = (dataTypeConfig?.input_type as InputType) || DATA_TYPE_INPUT_MAP[newDataType] || 'text';
+
+                                    // Build updates object
+                                    const updates: Partial<FieldDefinition> = {
+                                        dataType: newDataType,
+                                        inputType: newInputType
+                                    };
+
+                                    // If input type is 'digit', copy the default_value as digitFormat
+                                    if (newInputType === 'digit' && dataTypeConfig?.default_value) {
+                                        updates.digitFormat = dataTypeConfig.default_value;
+                                    }
+                                    // If input type is 'location', copy the default_value as locationOutputFormat
+                                    if (newInputType === 'location' && dataTypeConfig?.default_value) {
+                                        updates.locationOutputFormat = dataTypeConfig.default_value as import("@/lib/api/types").LocationOutputFormat;
+                                    }
+
+                                    onFieldDefinitionChange(updates);
                                 }}
                                 disabled={disabled}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-white"
@@ -289,6 +417,18 @@ function FieldRow({
                             </select>
                         </div>
                     </div>
+
+                    {/* Digit Format - only show for digit input type */}
+                    {field.definition.inputType === 'digit' && (
+                        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                            <label className="text-xs font-medium text-amber-800 mb-2 block">รูปแบบ Digit</label>
+                            <DigitFormatBuilderCompact
+                                value={field.definition.digitFormat || 'XXXXXX'}
+                                onChange={(value) => onFieldDefinitionChange({ digitFormat: value })}
+                                disabled={disabled}
+                            />
+                        </div>
+                    )}
 
                     {/* AI suggestion details */}
                     {suggestion && (
@@ -457,10 +597,13 @@ export function UnifiedFieldEditor({
         if (suggestion.suggested_alias) {
             onAliasChange(fieldKey, suggestion.suggested_alias);
         }
+        // Get input_type from configurable dataType if available
+        const dataTypeConfig = dataTypes?.find(dt => dt.code === suggestion.data_type);
+        const inputType = (dataTypeConfig?.input_type as InputType) || (suggestion.input_type as InputType);
         // Apply field definition changes
         onFieldDefinitionChange(fieldKey, {
             dataType: suggestion.data_type as DataType,
-            inputType: suggestion.input_type as InputType,
+            inputType: inputType,
             entity: suggestion.entity as Entity,
         });
         // Remove from suggestions
@@ -474,9 +617,12 @@ export function UnifiedFieldEditor({
                 if (suggestion.suggested_alias) {
                     onAliasChange(fieldKey, suggestion.suggested_alias);
                 }
+                // Get input_type from configurable dataType if available
+                const dataTypeConfig = dataTypes?.find(dt => dt.code === suggestion.data_type);
+                const inputType = (dataTypeConfig?.input_type as InputType) || (suggestion.input_type as InputType);
                 onFieldDefinitionChange(fieldKey, {
                     dataType: suggestion.data_type as DataType,
-                    inputType: suggestion.input_type as InputType,
+                    inputType: inputType,
                     entity: suggestion.entity as Entity,
                 });
             }

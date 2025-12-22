@@ -130,6 +130,35 @@ export default function EditFormPage({ params }: PageProps) {
                     ]);
                     setDocumentTypes(docTypes);
                     setDataTypes(configurableDataTypes);
+
+                    // Ensure 'location' input type exists (for Thai admin boundary selection)
+                    const hasLocation = configurableInputTypes.some(it => it.code === 'location');
+                    if (!hasLocation) {
+                        configurableInputTypes.push({
+                            id: 'location-fallback',
+                            code: 'location',
+                            name: 'Location',
+                            description: 'Thai administrative boundary selection',
+                            is_active: true,
+                            priority: 100,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        });
+                    }
+                    // Ensure 'digit' input type exists (for OTP, license plates, etc.)
+                    const hasDigit = configurableInputTypes.some(it => it.code === 'digit');
+                    if (!hasDigit) {
+                        configurableInputTypes.push({
+                            id: 'digit-fallback',
+                            code: 'digit',
+                            name: 'Digit Blocks',
+                            description: 'Digit block input with separators (OTP, License Plate)',
+                            is_active: true,
+                            priority: 75,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        });
+                    }
                     setInputTypes(configurableInputTypes);
 
                     // Extract category options from filters

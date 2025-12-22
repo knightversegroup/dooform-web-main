@@ -23,7 +23,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Template, FieldDefinition, PageOrientation } from "@/lib/api/types";
+import { Template, FieldDefinition, PageOrientation, ConfigurableDataType } from "@/lib/api/types";
 import { Button } from "@/app/components/ui/Button";
 import { SmartInput } from "@/app/components/ui/SmartInput";
 import { OCRScanner } from "@/app/components/ui/OCRScanner";
@@ -220,17 +220,45 @@ export default function FillFormPage({ params }: PageProps) {
         });
         setFormData(initialData);
 
-        // Fetch field definitions
+        // Fetch field definitions and configurable data types
         try {
           // Field definitions now include radio groups configured via the Canvas page
           // Radio groups have isRadioGroup: true and radioOptions array
-          const definitions = await apiClient.getFieldDefinitions(templateId);
-          setFieldDefinitions(definitions);
+          const [definitions, dataTypes] = await Promise.all([
+            apiClient.getFieldDefinitions(templateId),
+            apiClient.getConfigurableDataTypes(true).catch(() => [] as ConfigurableDataType[]),
+          ]);
+
+          // Enhance field definitions with digitFormat/locationOutputFormat from configurable data types
+          const enhancedDefinitions: Record<string, FieldDefinition> = {};
+          Object.entries(definitions).forEach(([key, def]) => {
+            const enhanced = { ...def };
+
+            // If inputType is 'digit' and no digitFormat, look it up from configurable data type
+            if (enhanced.inputType === 'digit' && !enhanced.digitFormat) {
+              const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
+              if (dataTypeConfig?.default_value) {
+                enhanced.digitFormat = dataTypeConfig.default_value;
+              }
+            }
+
+            // If inputType is 'location' and no locationOutputFormat, look it up from configurable data type
+            if (enhanced.inputType === 'location' && !enhanced.locationOutputFormat) {
+              const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
+              if (dataTypeConfig?.default_value) {
+                enhanced.locationOutputFormat = dataTypeConfig.default_value as FieldDefinition['locationOutputFormat'];
+              }
+            }
+
+            enhancedDefinitions[key] = enhanced;
+          });
+
+          setFieldDefinitions(enhancedDefinitions);
 
           // Filter out hidden merged fields, radio group hidden fields, and radio child fields
           // Radio child fields (radio_child_*) will be shown conditionally based on selection
           const visibleDefinitions: Record<string, FieldDefinition> = {};
-          Object.entries(definitions).forEach(([key, def]) => {
+          Object.entries(enhancedDefinitions).forEach(([key, def]) => {
             if (def.group?.startsWith("merged_hidden_") ||
                 def.group?.startsWith("radio_hidden_") ||
                 def.group?.startsWith("radio_child_")) {
@@ -242,7 +270,7 @@ export default function FillFormPage({ params }: PageProps) {
           setFormData((prev) => {
             const updated = { ...prev };
             // Initialize all field definitions including child fields (they may be shown conditionally)
-            Object.keys(definitions).forEach((key) => {
+            Object.keys(enhancedDefinitions).forEach((key) => {
               const cleanKey = key.replace(/\{\{|\}\}/g, "");
               if (!(cleanKey in updated)) {
                 updated[cleanKey] = "";
