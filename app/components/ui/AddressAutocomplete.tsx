@@ -105,7 +105,9 @@ export function AddressAutocomplete({
 
   // Debounced search
   const searchAddress = useCallback(async (query: string) => {
+    console.log('[AddressAutocomplete] searchAddress called with query:', query);
     if (!query || query.length < 1) {
+      console.log('[AddressAutocomplete] Early return - query empty or too short');
       setResults([]);
       setIsOpen(false);
       return;
@@ -113,7 +115,9 @@ export function AddressAutocomplete({
 
     setLoading(true);
     try {
+      console.log('[AddressAutocomplete] Calling addressService.searchAddress...');
       const data = await addressService.searchAddress(query);
+      console.log('[AddressAutocomplete] Got results:', data?.length || 0, 'items');
       // Filter out invalid results
       const validResults = (data || []).filter(
         (item) => item && item.name1 && item.name2 && item.name3
@@ -132,6 +136,7 @@ export function AddressAutocomplete({
   // Handle input change with debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    console.log('[AddressAutocomplete] handleInputChange:', newValue);
     onChange(newValue);
 
     // Clear previous timeout
@@ -141,6 +146,7 @@ export function AddressAutocomplete({
 
     // Debounce search
     debounceRef.current = setTimeout(() => {
+      console.log('[AddressAutocomplete] Debounce timeout fired, calling searchAddress');
       searchAddress(newValue);
     }, 300);
   };

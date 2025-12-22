@@ -79,7 +79,9 @@ class AddressService {
 
   // Search address by keyword (autocomplete)
   async searchAddress(keyword: string): Promise<AdministrativeBoundary[]> {
+    console.log('[AddressService] searchAddress called:', { keyword, ADDRESS_API_BASE });
     if (!ADDRESS_API_BASE || !keyword || keyword.length < 1) {
+      console.log('[AddressService] Early return - missing API base or keyword');
       return [];
     }
 
