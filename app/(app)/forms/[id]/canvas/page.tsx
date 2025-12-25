@@ -588,6 +588,16 @@ export default function CanvasPage() {
                 updatedDef.defaultValue = configDataType.default_value;
             }
 
+            // If input type is 'digit', copy the default_value as digitFormat
+            if (updatedDef.inputType === 'digit' && configDataType?.default_value) {
+                updatedDef.digitFormat = configDataType.default_value;
+            }
+
+            // If input type is 'location', copy the default_value as locationOutputFormat
+            if (updatedDef.inputType === 'location' && configDataType?.default_value) {
+                updatedDef.locationOutputFormat = configDataType.default_value as import("@/lib/api/types").LocationOutputFormat;
+            }
+
             return { ...prev, [fieldKey]: updatedDef };
         });
     }, [setFieldDefinitions, dataTypes]);

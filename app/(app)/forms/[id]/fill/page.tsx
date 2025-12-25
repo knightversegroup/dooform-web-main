@@ -235,10 +235,18 @@ export default function FillFormPage({ params }: PageProps) {
             const enhanced = { ...def };
             const dataTypeConfig = dataTypes.find(dt => dt.code === enhanced.dataType);
 
+            // Debug logging for digit fields
+            if (enhanced.inputType === 'digit') {
+              console.log(`[Fill] Field "${key}": inputType=digit, dataType=${enhanced.dataType}, digitFormat=${enhanced.digitFormat || '(none)'}, dataTypeConfig found=${!!dataTypeConfig}, config.default_value=${dataTypeConfig?.default_value || '(none)'}`);
+            }
+
             // If inputType is 'digit' and no digitFormat, look it up from configurable data type
             if (enhanced.inputType === 'digit' && !enhanced.digitFormat) {
               if (dataTypeConfig?.default_value) {
                 enhanced.digitFormat = dataTypeConfig.default_value;
+                console.log(`[Fill] Applied digitFormat from dataTypeConfig: ${enhanced.digitFormat}`);
+              } else {
+                console.warn(`[Fill] Warning: No digitFormat found for digit field "${key}". Will use default 'XXXXXX'.`);
               }
             }
 
