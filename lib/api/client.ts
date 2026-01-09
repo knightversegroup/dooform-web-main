@@ -1,4 +1,5 @@
 // API Client for Placeholder-Model Backend
+import { logger } from '@/lib/utils/logger';
 import {
   API_BASE_URL,
   UploadResponse,
@@ -107,7 +108,7 @@ class ApiClient {
       await this.refreshPromise;
       return true;
     } catch (error) {
-      console.error('[ApiClient] Token refresh failed:', error);
+      logger.error('ApiClient', 'Token refresh failed:', error);
       return false;
     } finally {
       this.isRefreshing = false;
@@ -304,7 +305,7 @@ class ApiClient {
         if (refreshed) {
           const retryResponse = await makeRequest();
           if (!retryResponse.ok) {
-            console.warn(`HTML preview not available: ${retryResponse.status}`);
+            logger.warn('ApiClient', `HTML preview not available: ${retryResponse.status}`);
             return '';
           }
           return retryResponse.text();
@@ -312,12 +313,12 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        console.warn(`HTML preview not available: ${response.status}`);
+        logger.warn('ApiClient', `HTML preview not available: ${response.status}`);
         return '';
       }
       return response.text();
     } catch (error) {
-      console.warn('Failed to fetch HTML preview:', error);
+      logger.warn('ApiClient', 'Failed to fetch HTML preview:', error);
       return '';
     }
   }
@@ -362,7 +363,7 @@ class ApiClient {
         if (refreshed) {
           const retryResponse = await makeRequest();
           if (!retryResponse.ok) {
-            console.warn(`PDF preview not available: ${retryResponse.status}`);
+            logger.warn('ApiClient', `PDF preview not available: ${retryResponse.status}`);
             return null;
           }
           return retryResponse.blob();
@@ -370,12 +371,12 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        console.warn(`PDF preview not available: ${response.status}`);
+        logger.warn('ApiClient', `PDF preview not available: ${response.status}`);
         return null;
       }
       return response.blob();
     } catch (error) {
-      console.warn('Failed to fetch PDF preview:', error);
+      logger.warn('ApiClient', 'Failed to fetch PDF preview:', error);
       return null;
     }
   }

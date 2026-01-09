@@ -1,5 +1,7 @@
 // Address Autofill Service
 
+import { logger } from '../utils/logger';
+
 const ADDRESS_API_BASE = process.env.NEXT_PUBLIC_ADDRESS_API_URL;
 
 // Types for Thai address data based on administrative_boundaries table
@@ -79,9 +81,9 @@ class AddressService {
 
   // Search address by keyword (autocomplete)
   async searchAddress(keyword: string): Promise<AdministrativeBoundary[]> {
-    console.log('[AddressService] searchAddress called:', { keyword, ADDRESS_API_BASE });
+    logger.debug('AddressService', 'searchAddress called:', { keyword, ADDRESS_API_BASE });
     if (!ADDRESS_API_BASE || !keyword || keyword.length < 1) {
-      console.log('[AddressService] Early return - missing API base or keyword');
+      logger.debug('AddressService', 'Early return - missing API base or keyword');
       return [];
     }
 
@@ -107,7 +109,7 @@ class AddressService {
       this.cache.set(cacheKey, data);
       return data;
     } catch (error) {
-      console.error('Address search error:', error);
+      logger.error('AddressService', 'Address search error:', error);
       return [];
     }
   }
@@ -145,7 +147,7 @@ class AddressService {
       this.cache.set(cacheKey, data);
       return data;
     } catch (error) {
-      console.error('Address query error:', error);
+      logger.error('AddressService', 'Address query error:', error);
       return [];
     }
   }
@@ -178,7 +180,7 @@ class AddressService {
       this.provincesCache = provinces;
       return provinces;
     } catch (error) {
-      console.error('Get provinces error:', error);
+      logger.error('AddressService', 'Get provinces error:', error);
       return [];
     }
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState, useRef, useEffect } from "react";
+import { forwardRef, useState, useRef, useEffect, useId } from "react";
 import { Calendar, Type } from "lucide-react";
 import { FieldDefinition, DateFormat, RadioOption, LocationOutputFormat } from "@/lib/api/types";
 
@@ -392,8 +392,24 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
         const [locationOutputFormat, setLocationOutputFormat] = useState<LocationOutputFormat>(definition.locationOutputFormat || 'district');
         const datePickerRef = useRef<HTMLInputElement>(null);
 
+        // Generate unique IDs for accessibility
+        const uniqueId = useId();
+        const inputId = `smart-input-${uniqueId}`;
+        const labelId = `smart-input-label-${uniqueId}`;
+        const errorId = `smart-input-error-${uniqueId}`;
+        const descriptionId = `smart-input-desc-${uniqueId}`;
+
         const label = alias || definition.placeholder.replace(/\{\{|\}\}/g, '');
         const placeholder = `กรอก ${label}`;
+
+        // Common accessibility props
+        const getAriaProps = () => ({
+            id: inputId,
+            'aria-labelledby': !hideLabel ? labelId : undefined,
+            'aria-label': hideLabel ? label : undefined,
+            'aria-invalid': error ? true : undefined,
+            'aria-describedby': error ? errorId : (definition.description ? descriptionId : undefined),
+        });
 
         const handleChange = (newValue: string) => {
             onChange(newValue);
@@ -431,6 +447,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                         onBlur={handleBlur}
                         disabled={disabled}
                         className={baseInputClass}
+                        {...getAriaProps()}
                     >
                         <option value="">-- เลือก{label} --</option>
                         {validation.options.map((option) => (
@@ -455,6 +472,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                         placeholder={placeholder}
                         rows={3}
                         className={`${baseInputClass} resize-none`}
+                        {...getAriaProps()}
                     />
                 );
             }
@@ -488,6 +506,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                                 disabled={disabled}
                                 placeholder={getDatePlaceholder(dateFormat)}
                                 className={`${baseInputClass} pr-10`}
+                                {...getAriaProps()}
                             />
                             {/* Calendar button */}
                             <button
@@ -495,8 +514,9 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                                 onClick={openDatePicker}
                                 disabled={disabled}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-[#007398] transition-colors disabled:opacity-50"
+                                aria-label="เปิดปฏิทิน"
                             >
-                                <Calendar className="w-4 h-4" />
+                                <Calendar className="w-4 h-4" aria-hidden="true" />
                             </button>
                             {/* Hidden date picker for calendar selection */}
                             <input
@@ -543,6 +563,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                         onBlur={handleBlur}
                         disabled={disabled}
                         className={baseInputClass}
+                        {...getAriaProps()}
                     />
                 );
             }
@@ -562,6 +583,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                         min={validation?.min}
                         max={validation?.max}
                         className={baseInputClass}
+                        {...getAriaProps()}
                     />
                 );
             }
@@ -582,6 +604,8 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                             onBlur={handleBlur}
                             disabled={disabled}
                             className="w-5 h-5 rounded border-border-default text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                            aria-label={label}
+                            aria-checked={isChecked}
                         />
                         <span className="text-sm text-foreground">
                             {isChecked ? 'ใช่ / Yes' : 'ไม่ใช่ / No'}
@@ -595,7 +619,12 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                 // value format: "placeholder_key" (e.g., "$1" or "$2")
                 // The selected placeholder gets "/" and others get ""
                 return (
-                    <div className="flex flex-col gap-2 py-2">
+                    <div
+                        className="flex flex-col gap-2 py-2"
+                        role="radiogroup"
+                        aria-labelledby={!hideLabel ? labelId : undefined}
+                        aria-label={hideLabel ? label : undefined}
+                    >
                         {definition.radioOptions.map((option) => {
                             const isSelected = value === option.placeholder;
                             return (
@@ -612,11 +641,12 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                                         onBlur={handleBlur}
                                         disabled={disabled}
                                         className="w-5 h-5 text-primary border-border-default focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                        aria-checked={isSelected}
                                     />
                                     <span className="text-sm text-foreground">
                                         {option.label}
                                     </span>
-                                    <span className="text-xs text-text-muted font-mono ml-auto">
+                                    <span className="text-xs text-text-muted font-mono ml-auto" aria-hidden="true">
                                         {`{{${option.placeholder}}}`}
                                     </span>
                                 </label>
@@ -861,6 +891,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                             }
                             maxLength={separator ? undefined : fieldCount}
                             className={baseInputClass}
+                            {...getAriaProps()}
                         />
                         {/* Preview of how the value will be split */}
                         {value && (
@@ -905,6 +936,7 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                     placeholder={placeholder}
                     maxLength={validation?.maxLength}
                     className={baseInputClass}
+                    {...getAriaProps()}
                 />
             );
         };
@@ -913,10 +945,14 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
             <div className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1'} w-full`}>
                 {!hideLabel && (
                     <div className="flex items-center justify-between">
-                        <label className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground truncate`}>
+                        <label
+                            id={labelId}
+                            htmlFor={inputId}
+                            className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground truncate`}
+                        >
                             {label}
                         </label>
-                        <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-text-muted px-1.5 py-0.5 bg-surface-alt rounded flex-shrink-0`}>
+                        <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-text-muted px-1.5 py-0.5 bg-surface-alt rounded flex-shrink-0`} aria-hidden="true">
                             {definition.dataTypeLabel || definition.dataType}
                         </span>
                     </div>
@@ -927,21 +963,27 @@ export const SmartInput = forwardRef<HTMLInputElement | HTMLSelectElement | HTML
                 {!compact && (
                     <div className="flex items-center justify-between">
                         {error ? (
-                            <span className="text-xs text-red-500">{error}</span>
+                            <span id={errorId} className="text-xs text-red-500" role="alert">
+                                {error}
+                            </span>
                         ) : definition.description ? (
-                            <span className="text-xs text-text-muted">{definition.description}</span>
+                            <span id={descriptionId} className="text-xs text-text-muted">
+                                {definition.description}
+                            </span>
                         ) : (
                             <span />
                         )}
                         {showPlaceholderKey && alias && (
-                            <span className="text-xs text-text-muted font-mono">
+                            <span className="text-xs text-text-muted font-mono" aria-hidden="true">
                                 {definition.placeholder}
                             </span>
                         )}
                     </div>
                 )}
                 {compact && error && (
-                    <span className="text-xs text-red-500">{error}</span>
+                    <span id={errorId} className="text-xs text-red-500" role="alert">
+                        {error}
+                    </span>
                 )}
             </div>
         );

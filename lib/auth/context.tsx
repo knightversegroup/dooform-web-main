@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { useRouter } from 'next/navigation';
 import type { AuthContextType, User, AuthResponse, RoleName, QuotaInfo } from './types';
 import { apiClient } from '../api/client';
+import { logger } from '../utils/logger';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
       } catch (error) {
-        console.error('[AuthContext] Failed to load auth state:', error);
+        logger.error('AuthContext', 'Failed to load auth state:', error);
       } finally {
         setIsLoading(false);
         setIsInitialized(true);
@@ -103,7 +104,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       router.push('/templates');
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('AuthContext', 'Login error:', error);
       throw error;
     }
   }, [router]);
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update the API client with the new token immediately
       apiClient.setAccessToken(data.data.access_token);
     } catch (error) {
-      console.error('Token refresh error:', error);
+      logger.error('AuthContext', 'Token refresh error:', error);
       throw error;
     }
   }, [refreshToken]);
@@ -199,7 +200,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
     } catch (error) {
-      console.error('[AuthContext] Failed to refresh quota:', error);
+      logger.error('AuthContext', 'Failed to refresh quota:', error);
     }
   }, [accessToken]);
 

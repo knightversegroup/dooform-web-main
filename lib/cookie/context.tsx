@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { logger } from '../utils/logger';
 
 export type CookieConsentType = 'all' | 'necessary' | 'custom' | null;
 
@@ -61,7 +62,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
           setShowBanner(true);
         }
       } catch (error) {
-        console.error('[CookieConsent] Failed to load consent state:', error);
+        logger.error('CookieConsent', 'Failed to load consent state:', error);
         setShowBanner(true);
       } finally {
         setIsInitialized(true);
@@ -87,7 +88,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
         });
       }
     } catch (error) {
-      console.error('[CookieConsent] Failed to save consent state:', error);
+      logger.error('CookieConsent', 'Failed to save consent state:', error);
     }
   }, []);
 
@@ -132,7 +133,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
       localStorage.removeItem(COOKIE_CONSENT_KEY);
       localStorage.removeItem(COOKIE_PREFERENCES_KEY);
     } catch (error) {
-      console.error('[CookieConsent] Failed to reset consent:', error);
+      logger.error('CookieConsent', 'Failed to reset consent:', error);
     }
     setConsent(null);
     setPreferences(defaultPreferences);

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MapPin, Loader2, X } from "lucide-react";
 import { addressService, AdministrativeBoundary, AddressSelection } from "@/lib/api/addressService";
+import { logger } from "@/lib/utils/logger";
 
 // Search level determines what data to fetch and display
 export type AddressSearchLevel = 'full' | 'province' | 'district' | 'subdistrict';
@@ -50,6 +51,10 @@ export function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Simple cache for repeated searches
+  const cacheRef = useRef<Map<string, AdministrativeBoundary[]>>(new Map());
 
   // Deduplicate results based on search level
   const deduplicatedResults = useMemo((): DeduplicatedResult[] => {
@@ -103,30 +108,75 @@ export function AddressAutocomplete({
     return Array.from(seen.values());
   }, [results, searchLevel]);
 
-  // Debounced search
+  // Minimum query length before triggering search (performance optimization)
+  const MIN_QUERY_LENGTH = 2;
+
+  // Debounced search with AbortController and caching
   const searchAddress = useCallback(async (query: string) => {
-    console.log('[AddressAutocomplete] searchAddress called with query:', query);
-    if (!query || query.length < 1) {
-      console.log('[AddressAutocomplete] Early return - query empty or too short');
+    logger.debug('AddressAutocomplete', 'searchAddress called with query:', query);
+
+    if (!query || query.length < MIN_QUERY_LENGTH) {
+      logger.debug('AddressAutocomplete', `Early return - query length ${query?.length || 0} < ${MIN_QUERY_LENGTH}`);
       setResults([]);
       setIsOpen(false);
       return;
     }
 
+    // Check cache first
+    const cacheKey = query.toLowerCase().trim();
+    if (cacheRef.current.has(cacheKey)) {
+      logger.debug('AddressAutocomplete', 'Cache hit for:', cacheKey);
+      const cachedResults = cacheRef.current.get(cacheKey)!;
+      setResults(cachedResults);
+      setIsOpen(cachedResults.length > 0);
+      setSelectedIndex(-1);
+      return;
+    }
+
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+
     setLoading(true);
     try {
-      console.log('[AddressAutocomplete] Calling addressService.searchAddress...');
+      logger.debug('AddressAutocomplete', 'Calling addressService.searchAddress...');
       const data = await addressService.searchAddress(query);
-      console.log('[AddressAutocomplete] Got results:', data?.length || 0, 'items');
+
+      // Check if this request was aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        logger.debug('AddressAutocomplete', 'Request was aborted, ignoring results');
+        return;
+      }
+
+      logger.debug('AddressAutocomplete', 'Got results:', data?.length || 0, 'items');
+
       // Filter out invalid results
       const validResults = (data || []).filter(
         (item) => item && item.name1 && item.name2 && item.name3
       );
+
+      // Cache the results (limit cache size)
+      if (cacheRef.current.size > 50) {
+        // Remove oldest entries
+        const firstKey = cacheRef.current.keys().next().value;
+        if (firstKey) cacheRef.current.delete(firstKey);
+      }
+      cacheRef.current.set(cacheKey, validResults);
+
       setResults(validResults);
       setIsOpen(validResults.length > 0);
       setSelectedIndex(-1);
     } catch (error) {
-      console.error("Search error:", error);
+      // Ignore abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.debug('AddressAutocomplete', 'Request aborted');
+        return;
+      }
+      logger.error('AddressAutocomplete', 'Search error:', error);
       setResults([]);
     } finally {
       setLoading(false);
@@ -136,7 +186,7 @@ export function AddressAutocomplete({
   // Handle input change with debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    console.log('[AddressAutocomplete] handleInputChange:', newValue);
+    logger.debug('AddressAutocomplete', 'handleInputChange:', newValue);
     onChange(newValue);
 
     // Clear previous timeout
@@ -146,7 +196,7 @@ export function AddressAutocomplete({
 
     // Debounce search
     debounceRef.current = setTimeout(() => {
-      console.log('[AddressAutocomplete] Debounce timeout fired, calling searchAddress');
+      logger.debug('AddressAutocomplete', 'Debounce timeout fired, calling searchAddress');
       searchAddress(newValue);
     }, 300);
   };
@@ -219,11 +269,14 @@ export function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Cleanup debounce on unmount
+  // Cleanup debounce and abort controller on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -246,7 +299,7 @@ export function AddressAutocomplete({
           type="text"
           value={value}
           onChange={handleInputChange}
-          onFocus={() => value.length >= 1 && deduplicatedResults.length > 0 && setIsOpen(true)}
+          onFocus={() => value.length >= MIN_QUERY_LENGTH && deduplicatedResults.length > 0 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
@@ -296,7 +349,7 @@ export function AddressAutocomplete({
       )}
 
       {/* No results message */}
-      {isOpen && value.length >= 1 && deduplicatedResults.length === 0 && !loading && (
+      {isOpen && value.length >= MIN_QUERY_LENGTH && deduplicatedResults.length === 0 && !loading && (
         <div className="absolute z-50 w-full mt-1 bg-background border border-border-default rounded-xl shadow-lg p-4">
           <p className="text-sm text-text-muted text-center">ไม่พบข้อมูลที่ตรงกัน</p>
         </div>
