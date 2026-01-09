@@ -1,2 +1,2 @@
 export { CookieConsentBanner } from './CookieConsentBanner';
-export { Analytics } from './Analytics';
+export { AnalyticsG } from './Analytics';
