@@ -614,7 +614,7 @@ export default function CanvasPage() {
             // Extract placeholders from field definitions
             const placeholders = fieldDefinitions ? Object.keys(fieldDefinitions).map(key => `{{${key}}}`) : [];
             const result = await apiClient.suggestFieldTypes(template.id, { placeholders });
-            setFieldTypeSuggestions(result.suggestions);
+            setFieldTypeSuggestions(result.suggestions || []);
             setShowSuggestionsModal(true);
         } catch (err) {
             console.error("Failed to suggest field types:", err);

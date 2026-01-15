@@ -393,7 +393,7 @@ export default function EditFormPage({ params }: PageProps) {
             // Extract placeholders from field definitions
             const placeholders = fieldDefinitions ? Object.keys(fieldDefinitions).map(key => `{{${key}}}`) : [];
             const result = await apiClient.suggestFieldTypes(templateId, { placeholders });
-            return result.suggestions;
+            return result.suggestions || [];
         } catch (err) {
             console.error("Failed to suggest field types:", err);
             setSuggestionError(
