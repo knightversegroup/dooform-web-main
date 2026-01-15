@@ -2,7 +2,9 @@
 
 import { logger } from '../utils/logger';
 
-const ADDRESS_API_BASE = process.env.NEXT_PUBLIC_ADDRESS_API_URL;
+// Use main API URL + /geolocations path (merged with main API gateway)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const ADDRESS_API_BASE = API_BASE ? `${API_BASE}/geolocations` : undefined;
 
 // Types for Thai address data based on administrative_boundaries table
 // API returns UPPERCASE fields, we normalize to lowercase
