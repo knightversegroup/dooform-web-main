@@ -184,7 +184,7 @@ function UserRow({ user, onManage, onDelete }: {
       </div>
 
       {/* Roles */}
-      <div className="flex gap-1 flex-shrink-0">
+      <div className="flex gap-1 flex-shrink-0 w-24">
         {user.roles.map((role) => (
           <span
             key={role}
@@ -200,7 +200,7 @@ function UserRow({ user, onManage, onDelete }: {
       </div>
 
       {/* Quota */}
-      <div className="text-sm text-gray-600 w-20 flex-shrink-0 text-center">
+      <div className="text-sm text-gray-600 w-30 flex-shrink-0 text-center">
         {user.quota ? (
           <span>
             <span className="font-medium text-gray-900">{user.quota.remaining}</span>
@@ -228,7 +228,7 @@ function UserRow({ user, onManage, onDelete }: {
       </span>
 
       {/* Actions */}
-      <div className="flex gap-2 flex-shrink-0">
+      <div className="flex gap-2 flex-shrink-0 w-32">
         <button
           onClick={onManage}
           className="px-3 py-1.5 text-sm bg-[#000091] text-white rounded hover:bg-[#000091]/90 transition-colors"
@@ -433,9 +433,9 @@ export default function AdminUsersPage() {
               <div className="w-10 flex-shrink-0"></div>
               <div className="flex-1">ผู้ใช้</div>
               <div className="w-24 flex-shrink-0">บทบาท</div>
-              <div className="w-20 flex-shrink-0 text-center">โควต้า</div>
-              <div className="w-20 flex-shrink-0">Provider</div>
-              <div className="w-20 flex-shrink-0">สถานะ</div>
+              <div className="w-30 flex-shrink-0 text-center">โควต้า</div>
+              <div className="flex-shrink-0">Provider</div>
+              <div className="flex-shrink-0">สถานะ</div>
               <div className="w-32 flex-shrink-0">การดำเนินการ</div>
               <div className="w-5 flex-shrink-0"></div>
             </div>
