@@ -9,6 +9,7 @@ import {
   MoreVertical,
   FileText,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth/context";
 
 // ============================================================================
 // Types
@@ -169,10 +170,14 @@ export default function TemplateGallery({
   sections = [],
   onCreateBlank,
 }: TemplateGalleryProps) {
+  const { isAdmin } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Combine blank template with recent templates for showcase
-  const showcaseTemplates = [BLANK_TEMPLATE, ...recentTemplates.slice(0, 6)];
+  
+  const showcaseTemplates = isAdmin 
+    ? [BLANK_TEMPLATE, ...recentTemplates.slice(0, 6)]
+    : recentTemplates.slice(0, 6);
 
   return (
     <div className="border-b border-neutral-200">

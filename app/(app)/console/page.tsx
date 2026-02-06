@@ -37,7 +37,7 @@ import { useAuth } from "@/lib/auth/context";
 import { useIsAdmin } from "@/lib/auth/hooks";
 
 // Tab types
-type ConsoleTab = "datatypes" | "entities" | "filters" | "doctypes";
+type ConsoleTab = "datatypes" | "filters" | "doctypes"; // remove "entities"
 
 // Available input types for data types
 const INPUT_TYPE_OPTIONS = [
@@ -272,12 +272,12 @@ const TABS: TabConfig[] = [
     icon: Database,
     description: "กำหนดประเภทข้อมูลและการตรวจจับอัตโนมัติ",
   },
-  {
-    id: "entities",
-    label: "เอนทิตี้",
-    icon: Users,
-    description: "จัดการกฎการจำแนกเอนทิตี้",
-  },
+  //{
+    //id: "entities",
+    //label: "เอนทิตี้",
+    //icon: Users,
+    //description: "จัดการกฎการจำแนกเอนทิตี้",
+  //},
   {
     id: "filters",
     label: "ตัวกรอง",
@@ -300,7 +300,7 @@ export default function ConsolePage() {
 
   // Tab state - read from URL or default to datatypes
   const tabFromUrl = searchParams.get("tab") as ConsoleTab | null;
-  const validTabs: ConsoleTab[] = ["datatypes", "entities", "filters", "doctypes"];
+  const validTabs: ConsoleTab[] = ["datatypes", "filters", "doctypes"]; // removed "entities"
   const initialTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "datatypes";
   const [activeTab, setActiveTab] = useState<ConsoleTab>(initialTab);
 
@@ -354,10 +354,10 @@ export default function ConsolePage() {
             const types = await apiClient.getConfigurableDataTypes();
             setDataTypes(types);
             break;
-          case "entities":
-            const entities = await apiClient.getEntityRules();
-            setEntityRules(entities);
-            break;
+          //case "entities":
+            //const entities = await apiClient.getEntityRules();
+            //setEntityRules(entities);
+            //break;
           case "filters":
             const filters = await apiClient.getFilterCategories();
             setFilterCategories(filters);
@@ -407,12 +407,12 @@ export default function ConsolePage() {
           setDataTypes(types);
           setSuccess("Initialized default data types");
           break;
-        case "entities":
-          await apiClient.initializeDefaultEntityRules();
-          const entities = await apiClient.getEntityRules();
-          setEntityRules(entities);
-          setSuccess("Initialized default entity rules");
-          break;
+        //case "entities":
+        //  await apiClient.initializeDefaultEntityRules();
+        //  const entities = await apiClient.getEntityRules();
+        //  setEntityRules(entities);
+        //  setSuccess("Initialized default entity rules");
+        //  break;
         case "filters":
           await apiClient.initializeDefaultFilters();
           const filters = await apiClient.getFilterCategories();
@@ -440,10 +440,10 @@ export default function ConsolePage() {
           await apiClient.deleteConfigurableDataType(id);
           setDataTypes((prev) => prev.filter((item) => item.id !== id));
           break;
-        case "entities":
-          await apiClient.deleteEntityRule(id);
-          setEntityRules((prev) => prev.filter((item) => item.id !== id));
-          break;
+        //case "entities":
+        //  await apiClient.deleteEntityRule(id);
+        //  setEntityRules((prev) => prev.filter((item) => item.id !== id));
+        //  break;
         case "filters":
           await apiClient.deleteFilterCategory(id);
           setFilterCategories((prev) => prev.filter((item) => item.id !== id));
@@ -508,16 +508,16 @@ export default function ConsolePage() {
             onEdit={(id) => setEditingItem(id)}
           />
         );
-      case "entities":
-        return (
-          <EntitiesContent
-            entityRules={entityRules}
-            expandedItems={expandedItems}
-            onToggleExpand={toggleExpand}
-            onDelete={handleDelete}
-            onEdit={(id) => setEditingItem(id)}
-          />
-        );
+     //case "entities":
+        //return (
+          //<EntitiesContent
+            //entityRules={entityRules}
+            //expandedItems={expandedItems}
+            //onToggleExpand={toggleExpand}
+            //nDelete={handleDelete}
+            //onEdit={(id) => setEditingItem(id)}
+          ///>
+        //);
       case "filters":
         return (
           <FiltersContent

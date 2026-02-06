@@ -153,7 +153,7 @@ interface PageProps {
 
 export default function TemplateGroupDetailClient({ params }: PageProps) {
     const { id: documentTypeId } = use(params);
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading,isAdmin } = useAuth();
     const [documentType, setDocumentType] = useState<DocumentType | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -403,7 +403,7 @@ export default function TemplateGroupDetailClient({ params }: PageProps) {
                                 <h1 className="text-4xl font-medium text-gray-900 leading-tight">
                                     {documentType.name}
                                 </h1>
-                                {isAuthenticated && (
+                                {isAdmin && (
                                     <button
                                         onClick={openEditModal}
                                         className="p-2 text-gray-400 hover:text-[#000091] hover:bg-gray-100 rounded transition-colors flex-shrink-0"
