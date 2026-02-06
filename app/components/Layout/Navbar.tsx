@@ -36,19 +36,19 @@ const APPS_MENU_ITEMS = [
     icon: Folder,
     description: "Browse templates",
   },
-  {
-    name: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    description: "View analytics",
-  },
-  { name: "Team", href: "/team", icon: Users, description: "Manage team" },
-  {
-    name: "Automations",
-    href: "/automations",
-    icon: Zap,
-    description: "Workflow automations",
-  },
+  //{
+    //name: "Analytics",
+    //href: "/analytics",
+    //icon: BarChart3,
+    //description: "View analytics",
+  //},
+  //{ name: "Team", href: "/team", icon: Users, description: "Manage team" },
+  //{
+    //name: "Automations",
+    //href: "/automations",
+    //icon: Zap,
+    //description: "Workflow automations",
+  //},
   {
     name: "Settings",
     href: "/settings",
@@ -64,6 +64,7 @@ export default function Navbar() {
   const [isAppsMenuOpen, setIsAppsMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const appsMenuRef = useRef<HTMLDivElement>(null);
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -152,6 +153,7 @@ export default function Navbar() {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
+          {isAdmin && (
           <Link
             href="/forms/new"
             className="flex items-center gap-1.5 px-3 h-8 text-sm font-medium text-neutral-900 bg-white border border-neutral-300 hover:bg-neutral-50 rounded-lg transition-colors"
@@ -159,7 +161,7 @@ export default function Navbar() {
             <Plus className="w-4 h-4" />
             <span>Add</span>
           </Link>
-
+            )}
           <button
             className="flex items-center gap-1.5 px-3 h-8 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
             title="ช่วยเหลือ"

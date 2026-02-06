@@ -53,20 +53,20 @@ interface Workspace {
 const MAIN_NAV: NavItem[] = [
   { label: "หน้าหลัก", href: "/templates", icon: Home },
   { label: "ประวัติเอกสาร", href: "/history", icon: History },
-  { label: "พจนานุกรม", href: "/dictionary", icon: Book },
+  //{ label: "พจนานุกรม", href: "/dictionary", icon: Book },
 ];
 
-const EXPANDABLE_SECTIONS: NavSection[] = [
-  {
-    key: "analytics",
-    label: "ข้อมูลและประวัติ",
-    icon: BarChart3,
-    items: [
-      { label: "ล่าสุด", href: "/history", icon: History },
-      { label: "สถิติ", href: "/stats", icon: BarChart3 },
-    ],
-  },
-];
+//const EXPANDABLE_SECTIONS: NavSection[] = [
+  //{
+    //key: "analytics",
+    //label: "ข้อมูลและประวัติ",
+    //icon: BarChart3,
+    //items: [
+      //{ label: "ล่าสุด", href: "/history", icon: History },
+      //{ label: "สถิติ", href: "/stats", icon: BarChart3 },
+    //],
+  //},
+//];
 
 // Settings consolidated into a single Console page
 const SETTINGS_NAV: NavItem = {
@@ -378,7 +378,7 @@ export default function Sidebar() {
             ))}
 
             {/* Expandable Sections */}
-            {EXPANDABLE_SECTIONS.map((section) => (
+            {/*{EXPANDABLE_SECTIONS.map((section) => (
               <li key={section.key} className="mt-0.5">
                 <ExpandableSection
                   section={section}
@@ -388,7 +388,7 @@ export default function Sidebar() {
                   isCollapsed={isCollapsed}
                 />
               </li>
-            ))}
+            ))}*/}
 
             {/* Admin Section - Only visible to admins */}
             {isAdmin && (
