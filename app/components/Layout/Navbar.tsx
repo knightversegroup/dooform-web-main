@@ -26,10 +26,14 @@ const NAV_TABS = [
   { name: "รายการเอกสาร", href: "/templates", icon: FileText, position: "left" },
   { name: "ประวัติการกรอก", href: "/history", icon: History, position: "left" },
   { name: "คลังคำศัพท์", href: "/dictionary", icon: BookMarked, position: "left" },
-  { name: "ตั้งค่าระบบ", href: "/console", icon: Settings, position: "left", adminOnly: true },
-  { name: "จัดการผู้ใช้", href: "/admin/users", icon: Users, position: "left", adminOnly: true },
   // Right side
   { name: "คู่มือการใช้งาน", href: "/docs", icon: BookOpenText, position: "right" },
+];
+
+// Admin navigation (only visible to admins)
+const ADMIN_TABS = [
+  { name: "ตั้งค่าระบบ", href: "/console", icon: Settings, position: "left" },
+  { name: "จัดการผู้ใช้", href: "/admin/users", icon: Users, position: "left" },
 ];
 
 export default function Navbar() {
@@ -165,9 +169,25 @@ export default function Navbar() {
         <div className="flex items-center justify-between w-full max-w-5xl mx-auto h-12">
           {/* Left tabs - Gap: 12px */}
           <div className="flex items-center gap-3 h-12">
-            {NAV_TABS.filter((tab) => tab.position === "left")
-              .filter((tab) => !tab.adminOnly || isAdmin)
-              .map((tab) => {
+            {NAV_TABS.filter((tab) => tab.position === "left").map((tab) => {
+              const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
+              return (
+                <Link
+                  key={tab.name}
+                  href={tab.href}
+                  className={`flex items-center gap-2.5 px-2 py-1 h-12 text-sm font-medium font-sans transition-colors border-b-2 ${
+                    isActive
+                      ? "text-blue-900 border-blue-900"
+                      : "text-neutral-600 border-transparent hover:text-blue-900"
+                  }`}
+                >
+                  <tab.icon className="w-5 h-5" strokeWidth={1.67} />
+                  <span>{tab.name}</span>
+                </Link>
+              );
+            })}
+            {/* Admin tabs - Only visible to admins */}
+            {isAdmin && ADMIN_TABS.filter((tab) => tab.position === "left").map((tab) => {
               const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
               return (
                 <Link
