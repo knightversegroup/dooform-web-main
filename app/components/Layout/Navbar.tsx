@@ -14,6 +14,7 @@ import {
   BookOpenText,
   Search,
   Key,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { useSidebar } from "./SidebarContext";
@@ -25,7 +26,8 @@ const NAV_TABS = [
   { name: "รายการเอกสาร", href: "/templates", icon: FileText, position: "left" },
   { name: "ประวัติการกรอก", href: "/history", icon: History, position: "left" },
   { name: "คลังคำศัพท์", href: "/dictionary", icon: BookMarked, position: "left" },
-  { name: "ตั้งค่าระบบ", href: "/settings", icon: Settings, position: "left" },
+  { name: "ตั้งค่าระบบ", href: "/console", icon: Settings, position: "left", adminOnly: true },
+  { name: "จัดการผู้ใช้", href: "/admin/users", icon: Users, position: "left", adminOnly: true },
   // Right side
   { name: "คู่มือการใช้งาน", href: "/docs", icon: BookOpenText, position: "right" },
 ];
@@ -163,7 +165,9 @@ export default function Navbar() {
         <div className="flex items-center justify-between w-full max-w-5xl mx-auto h-12">
           {/* Left tabs - Gap: 12px */}
           <div className="flex items-center gap-3 h-12">
-            {NAV_TABS.filter((tab) => tab.position === "left").map((tab) => {
+            {NAV_TABS.filter((tab) => tab.position === "left")
+              .filter((tab) => !tab.adminOnly || isAdmin)
+              .map((tab) => {
               const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
               return (
                 <Link
