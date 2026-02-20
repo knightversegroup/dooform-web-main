@@ -13,7 +13,6 @@ import {
   BookMarked,
   BookOpenText,
   Search,
-  Key,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
@@ -133,16 +132,6 @@ export default function Navbar() {
                       <User className="w-4 h-4 opacity-50" />
                       <span>ตั้งค่าบัญชี</span>
                     </Link>
-                    {isAdmin && (
-                      <Link
-                        href="/admin/tokens"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-                      >
-                        <Key className="w-4 h-4 opacity-50" />
-                        <span>จัดการ Token</span>
-                      </Link>
-                    )}
                   </div>
                   <div className="border-t border-neutral-100 py-1">
                     <button
