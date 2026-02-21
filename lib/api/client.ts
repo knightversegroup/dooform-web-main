@@ -1683,11 +1683,3 @@ export interface OCRResponse {
 // Export singleton instance
 export const apiClient = new ApiClient();
 
-// Export helper functions for coordinate conversion
-export const pointsToPixels = (points: number, dpi = 96): number => {
-  return points * (dpi / 72.0);
-};
-
-export const pixelsToPoints = (pixels: number, dpi = 96): number => {
-  return pixels / (dpi / 72.0);
-};

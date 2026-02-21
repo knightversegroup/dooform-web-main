@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Breadcrumb } from "@/app/components/ui/Breadcrumb";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getBreadcrumbItems } from "./config";
 
 export function DocBreadcrumb() {

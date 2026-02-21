@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { ConfigurableDataType } from "@/lib/api/types";
-import { Button } from "@/app/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { INPUT_TYPE_OPTIONS, LOCATION_OUTPUT_FORMAT_OPTIONS } from "./constants";
 import { parseOptionsToLines, linesToOptionsString } from "./utils";
 import { DigitFormatBuilder } from "./DigitFormatBuilder";

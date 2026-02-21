@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, AlertCircle, Eye, Info } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { apiClient } from "@/lib/api/client";
-import { DocumentPreview } from "@/app/components/ui/DocumentPreview";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
 import { getHeaderBgColor } from "@/lib/constants/colors";
 import { DateFormat } from "@/lib/utils/fieldTypes";
 import { AddressSelection } from "@/lib/api/addressService";

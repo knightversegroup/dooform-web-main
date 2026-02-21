@@ -5,7 +5,7 @@
 import { Scan } from "lucide-react";
 import { FieldDefinition } from "@/lib/api/types";
 import { GroupedSection, DateFormat } from "@/lib/utils/fieldTypes";
-import { OCRScanner } from "@/app/components/ui/OCRScanner";
+import { OCRScanner } from "@/components/ui/OCRScanner";
 import { AddressSelection } from "@/lib/api/addressService";
 import { FormField } from "./FormField";
 

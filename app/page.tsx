@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
-import LogoLoader from "@/app/components/LogoLoader";
+import LogoLoader from "@/components/feedback/LogoLoader";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();

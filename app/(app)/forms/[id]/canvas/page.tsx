@@ -45,8 +45,8 @@ import {
 import type { DataType, ConfigurableDataType, Entity, FieldTypeSuggestion } from "@/lib/api/types";
 import { ENTITY_LABELS } from "@/lib/utils/fieldTypes";
 // Section type is imported from context
-import { EntityRulesToolbar } from "@/app/components/ui/EntityRulesToolbar";
-import { RadioGroupManager } from "@/app/components/ui/RadioGroupManager";
+import { EntityRulesToolbar } from "@/components/ui/EntityRulesToolbar";
+import { RadioGroupManager } from "@/components/ui/RadioGroupManager";
 import { useTemplate, type Section } from "../TemplateContext";
 
 

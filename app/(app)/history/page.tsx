@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/context";
-import { Button } from "@/app/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 
 interface DocumentHistory {
     id: string;

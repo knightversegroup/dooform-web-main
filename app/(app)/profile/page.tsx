@@ -12,8 +12,8 @@ import {
     Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { Button } from "@/app/components/ui/Button";
-import { Input } from "@/app/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 const DEFAULT_PROFILE_IMAGE = "/profile_default.webp";
 

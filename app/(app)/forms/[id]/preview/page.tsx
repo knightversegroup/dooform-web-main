@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { ArrowLeft, Loader2, AlertCircle, FileText } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { Button } from "@/app/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 
 interface PageProps {
     params: Promise<{ id: string }>;

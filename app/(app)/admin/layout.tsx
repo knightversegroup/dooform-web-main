@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { AdminOnlyRoute, AccessDenied } from '@/app/components/RoleProtectedRoute';
+import { AdminOnlyRoute, AccessDenied } from '@/components/auth/RoleProtectedRoute';
 
 interface AdminLayoutProps {
   children: ReactNode;

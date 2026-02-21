@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Users, ChevronRight, Shield, User, Mail, LayoutGrid, List } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import type { UserListItem, Role } from '@/lib/auth/types';
-import LogoLoaderInline from '@/app/components/LogoLoaderInline';
+import LogoLoaderInline from '@/components/feedback/LogoLoaderInline';
 
 // ============================================================================
 // Types

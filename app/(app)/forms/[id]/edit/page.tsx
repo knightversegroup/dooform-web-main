@@ -26,9 +26,9 @@ import {
 import { apiClient } from "@/lib/api/client";
 import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType, FilterCategory, ConfigurableDataType, ConfigurableInputType, FieldTypeSuggestion } from "@/lib/api/types";
 import { detectMergeableGroups, createMergedFieldDefinition } from "@/lib/utils/fieldTypes";
-import { Button } from "@/app/components/ui/Button";
-import { Input } from "@/app/components/ui/Input";
-import { UnifiedFieldEditor } from "@/app/components/ui/UnifiedFieldEditor";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { UnifiedFieldEditor } from "@/components/ui/UnifiedFieldEditor";
 import { useAuth } from "@/lib/auth/context";
 import { useTemplate } from "../TemplateContext";
 

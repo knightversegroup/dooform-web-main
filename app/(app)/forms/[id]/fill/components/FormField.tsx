@@ -4,7 +4,7 @@
 
 import { memo } from "react";
 import { FieldDefinition } from "@/lib/api/types";
-import { SmartInput } from "@/app/components/ui/SmartInput";
+import { SmartInput } from "@/components/ui/SmartInput";
 import { AddressSelection } from "@/lib/api/addressService";
 import { DateFormat } from "@/lib/utils/fieldTypes";
 

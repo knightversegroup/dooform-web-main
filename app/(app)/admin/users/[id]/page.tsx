@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Shield, User, X, Plus, RotateCcw } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import type { UserListItem, Role, QuotaTransaction } from '@/lib/auth/types';
-import LogoLoaderInline from '@/app/components/LogoLoaderInline';
+import LogoLoaderInline from '@/components/feedback/LogoLoaderInline';
 
 // ============================================================================
 // Sub-components

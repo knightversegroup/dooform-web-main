@@ -8,7 +8,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/auth/context";
-import LogoLoader from "@/app/components/LogoLoader";
+import LogoLoader from "@/components/feedback/LogoLoader";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";

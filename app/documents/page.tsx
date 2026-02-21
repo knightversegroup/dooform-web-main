@@ -1,17 +1,9 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import {
-  generatePageMetadata,
-  pageMetadataConfigs,
-} from "@/lib/seo/metadata";
-import { JsonLd, generateDocumentsPageSchema } from "@/lib/seo/structured-data";
-
-export const metadata = generatePageMetadata(pageMetadataConfigs.documents);
 
 export default function DocumentsPage() {
     return (
         <>
-            <JsonLd data={generateDocumentsPageSchema()} />
             {/* Page Title */}
             <h1 className="text-h1 text-foreground mb-6">
                 Getting Started
