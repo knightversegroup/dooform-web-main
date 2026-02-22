@@ -1,0 +1,228 @@
+'use client';
+
+import { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import type { AuthContextType, User, AuthResponse, RoleName, QuotaInfo } from './types';
+import { apiClient } from '../api/client';
+import { logger } from '../utils/logger';
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const AUTH_STORAGE_KEY = 'dooform_auth';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const router = useRouter();
+
+  // Load auth state from localStorage on mount
+  useEffect(() => {
+    const loadAuthState = () => {
+      try {
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const authData = JSON.parse(stored);
+          setUser(authData.user);
+          setAccessToken(authData.accessToken);
+          setRefreshToken(authData.refreshToken);
+          apiClient.setAccessToken(authData.accessToken);
+
+          // Check if profile needs to be completed
+          if (authData.user && !authData.user.profile_completed) {
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/profile/setup' &&
+                !currentPath.startsWith('/login') &&
+                !currentPath.startsWith('/auth/google/callback')) {
+              window.location.href = '/profile/setup';
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('AuthContext', 'Failed to load auth state:', error);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
+    loadAuthState();
+  }, []);
+
+  // Save auth state to localStorage and sync with API client whenever it changes
+  useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
+
+    if (user && accessToken && refreshToken) {
+      localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ user, accessToken, refreshToken })
+      );
+      apiClient.setAccessToken(accessToken);
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      apiClient.setAccessToken(null);
+    }
+  }, [user, accessToken, refreshToken, isInitialized]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const responseText = await response.text();
+
+      let data: AuthResponse;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Server returned invalid response (${response.status}): ${responseText}`);
+      }
+
+      if (!response.ok || !data.success) {
+        const errorMessage = data.message || 'Login failed';
+        throw new Error(errorMessage);
+      }
+
+      setUser(data.data.user);
+      setAccessToken(data.data.access_token);
+      setRefreshToken(data.data.refresh_token);
+
+      router.push('/templates');
+    } catch (error) {
+      logger.error('AuthContext', 'Login error:', error);
+      throw error;
+    }
+  }, [router]);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    router.push('/login');
+  }, [router]);
+
+  const refreshAccessToken = useCallback(async () => {
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      const data: AuthResponse = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Token refresh failed');
+      }
+
+      setAccessToken(data.data.access_token);
+      // Update the API client with the new token immediately
+      apiClient.setAccessToken(data.data.access_token);
+    } catch (error) {
+      logger.error('AuthContext', 'Token refresh error:', error);
+      throw error;
+    }
+  }, [refreshToken]);
+
+  // Register auth callbacks with API client for automatic 401 handling
+  useEffect(() => {
+    if (isInitialized) {
+      apiClient.setAuthCallbacks(refreshAccessToken, logout);
+    }
+  }, [isInitialized, refreshAccessToken, logout]);
+
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+      return { ...prevUser, ...updates };
+    });
+  }, []);
+
+  // Set full auth state (used after Google login)
+  const setAuthState = useCallback((userData: User, access: string, refresh: string) => {
+    setUser(userData);
+    setAccessToken(access);
+    setRefreshToken(refresh);
+  }, []);
+
+  // Role helper functions
+  const hasRole = useCallback((role: RoleName): boolean => {
+    if (!user?.roles) return false;
+    return user.roles.includes(role);
+  }, [user]);
+
+  const isAdmin = Array.isArray(user?.roles) && user.roles.includes('admin');
+
+  // Check if user can generate documents (has quota remaining or is admin)
+  const canGenerate = isAdmin || (user?.quota?.remaining ?? 0) > 0;
+
+  // Refresh quota from server
+  const refreshQuota = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/quota`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            return { ...prevUser, quota: data.data };
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('AuthContext', 'Failed to refresh quota:', error);
+    }
+  }, [accessToken]);
+
+  const value: AuthContextType = {
+    user,
+    accessToken,
+    refreshToken,
+    isAuthenticated: !!user && !!accessToken,
+    isLoading: isLoading || !isInitialized,
+    login,
+    logout,
+    refreshAccessToken,
+    updateUser,
+    setAuthState,
+    // Role-based helpers
+    isAdmin,
+    hasRole,
+    canGenerate,
+    refreshQuota,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export { AuthContext };
