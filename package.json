@@ -65,7 +65,9 @@
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@10.18.0",
-  "nx": {},
+  "nx": {
+    "includedScripts": []
+  },
   "dependencies": {
     "next": "~16.0.1",
     "react": "^19.0.0",
