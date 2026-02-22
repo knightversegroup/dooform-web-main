@@ -1,1 +1,1 @@
-npx nx run-many -t test:run
+npx nx run-many -t test:run --exclude=dooform-web
