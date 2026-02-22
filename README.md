@@ -26,7 +26,7 @@ An Nx-powered monorepo containing the Dooform platform — a form builder and do
 ## Getting Started
 
 ## Way of Work
-Please refer to the [Contributing Guidelines](./documents/way-of-work.md) for information on how to contribute to this project.
+Please refer to the [Contributing Guidelines](./documents/Way-of-Work.md) for information on how to contribute to this project.
 
 ### Prerequisites
 
