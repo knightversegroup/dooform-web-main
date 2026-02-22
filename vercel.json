@@ -1,6 +1,0 @@
-{
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter dooform-frontend build",
-  "outputDirectory": "apps/dooform-frontend/.next",
-  "framework": "nextjs"
-}
