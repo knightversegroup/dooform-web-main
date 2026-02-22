@@ -1,49 +1,53 @@
 # Dooform Monorepo
 
-This monorepo contains the Dooform web applications:
+An Nx-powered monorepo containing the Dooform platform — a form builder and document management system.
 
-- **apps/web** - Main Next.js application (forms, templates, user dashboard)
-- **apps/salespage** - SvelteKit marketing/landing page
+## Applications
+
+| App | Description | Path |
+|-----|-------------|------|
+| **dooform-frontend** | Main web app (forms, templates, user dashboard, admin) | `apps/dooform-frontend` |
+| **dooform-backoffice** | Admin back-office panel | `apps/dooform-backoffice` |
+| **dooform-console** | Console management dashboard | `apps/dooform-console` |
+| **dooform-salespage** | Marketing / landing page | `apps/dooform-salespage` |
 
 ## Tech Stack
 
-### Web App (apps/web)
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS v4
-- Firebase Auth
-
-### Salespage (apps/salespage)
-- SvelteKit 2
-- Svelte 5
-- TypeScript
-- Tailwind CSS v4
+- **Framework:** Next.js 16 + React 19
+- **Language:** TypeScript ~5.9
+- **Styling:** Tailwind CSS v4
+- **Auth:** Firebase Authentication
+- **Build System:** Nx 22
+- **Package Manager:** pnpm 10
+- **Testing:** Vitest + Jest (unit), Playwright (E2E)
+- **Linting:** ESLint 9 (flat config) + Prettier
+- **Git Hooks:** Husky + Commitlint (conventional commits)
 
 ## Getting Started
 
+## Way of Work
+Please refer to the [Contributing Guidelines](./documents/way-of-work.md) for information on how to contribute to this project.
+
 ### Prerequisites
+
 - Node.js >= 20
 - pnpm >= 9
 
 ### Installation
 
 ```bash
-# Install dependencies
 pnpm install
 ```
 
 ### Development
 
 ```bash
-# Run both apps in parallel
+# Run all apps
 pnpm dev
 
-# Run only the web app
-pnpm dev:web
-
-# Run only the salespage
-pnpm dev:salespage
+# Run specific apps
+pnpm dev:frontend
+pnpm dev:backoffice
 ```
 
 ### Build
@@ -52,48 +56,112 @@ pnpm dev:salespage
 # Build all apps
 pnpm build
 
-# Build only the web app
-pnpm build:web
+# Build via Nx directly
+pnpm exec nx build dooform-frontend
+```
 
-# Build only the salespage
-pnpm build:salespage
+### Testing
+
+```bash
+# Run unit tests (watch mode)
+pnpm test
+
+# Run unit tests (single run)
+pnpm test:run
+
+# Run E2E tests
+pnpm exec nx e2e dooform-backoffice-e2e
+```
+
+### Linting
+
+```bash
+pnpm lint
 ```
 
 ## Project Structure
 
 ```
-dooform-web-main/
+dooform-monorepo/
 ├── apps/
-│   ├── web/              # Next.js main application
-│   │   ├── app/          # App router pages and components
-│   │   ├── lib/          # Utilities, API client, auth
-│   │   └── public/       # Static assets
-│   └── salespage/        # SvelteKit marketing site
-│       ├── src/
-│       │   ├── lib/      # Svelte components
-│       │   └── routes/   # SvelteKit pages
-│       └── static/       # Static assets
-├── packages/             # Shared packages (future)
-├── package.json          # Root workspace config
-└── pnpm-workspace.yaml   # pnpm workspace definition
+│   ├── dooform-frontend/        # Main Next.js application
+│   │   ├── app/                 # App router (pages, layouts, components)
+│   │   ├── components/          # Shared UI components
+│   │   ├── lib/                 # Utilities, hooks
+│   │   └── public/              # Static assets
+│   ├── dooform-backoffice/      # Back-office Next.js app
+│   ├── dooform-console/         # Console Next.js app
+│   ├── dooform-salespage/       # Landing page Next.js app
+│   ├── dooform-backoffice-e2e/  # Playwright E2E tests
+│   ├── dooform-console-e2e/
+│   └── dooform-salespage-e2e/
+├── libs/
+│   └── shared/                  # @dooform/shared library
+│       └── src/
+│           ├── api/             # API client, types, address service
+│           ├── auth/            # AuthProvider, hooks (useAuth, useIsAdmin, useQuota)
+│           ├── constants/       # Colors, design tokens
+│           ├── firebase/        # Firebase config & initialization
+│           └── utils/           # Error handler, logger, field utilities
+├── documents/                   # Internal documentation
+├── nx.json                      # Nx workspace configuration
+├── pnpm-workspace.yaml          # pnpm workspace definition
+└── package.json                 # Root scripts & dependencies
+```
+
+## Shared Library
+
+The `@dooform/shared` package (`libs/shared`) provides common utilities across all apps:
+
+```typescript
+import { useAuth, apiClient, AuthProvider } from '@dooform/shared';
+```
+
+**Exports:** API client, Firebase auth context & hooks, color constants, error handling, and logging utilities.
+
+## Installing Dependencies
+
+```bash
+# Add to a specific app
+pnpm --filter dooform-frontend add <package>
+
+# Add dev dependency to shared lib
+pnpm --filter @dooform/shared add -D <package>
+
+# Add to root workspace
+pnpm add -Dw <package>
 ```
 
 ## Environment Variables
 
-### Web App (apps/web/.env)
+A root `.env` file is symlinked into each app. Key variables:
+
 ```
-NEXT_PUBLIC_API_URL=your-api-url
-NEXT_PUBLIC_FIREBASE_*=firebase-config
+NEXT_PUBLIC_API_URL=<api-url>
+NEXT_PUBLIC_FIREBASE_*=<firebase-config>
+NEXT_PUBLIC_POSTHOG_KEY=<posthog-key>
+NEXT_PUBLIC_MAINTENANCE_MODE=false
 ```
 
-### Salespage (apps/salespage/.env)
+## Nx Commands
+
+```bash
+# Visualize dependency graph
+pnpm graph
+
+# Run a target for a specific project
+pnpm exec nx <target> <project>
+
+# Run a target across all projects
+pnpm exec nx run-many -t <target>
 ```
-VITE_APP_URL=http://localhost:3000  # URL to main web app
-```
+
+## Git Workflow
+
+- **Conventional commits** enforced via commitlint (`feat:`, `fix:`, `chore:`, etc.)
+- **Pre-commit hook** runs `nx run-many -t test:run` to validate all tests pass
+- **Branch strategy:** `main` (production), `dev` (development), feature branches
 
 ## Deployment
 
-Each app can be deployed independently:
-
-- **Web App**: Deploy to Vercel, AWS, or any Node.js hosting
-- **Salespage**: Deploy to Vercel, Netlify, Cloudflare Pages, or any static hosting
+Each app can be deployed independently to Vercel or any Node.js-compatible hosting.
