@@ -3,48 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "clean": "rm -rf .next node_modules",
     "prepare": "husky"
-  },
-  "dependencies": {
-    "@gsap/react": "^2.1.2",
-    "@vercel/analytics": "^1.6.1",
-    "@xyflow/react": "^12.9.3",
-    "firebase": "^12.6.0",
-    "gsap": "^3.14.2",
-    "lucide-react": "^0.555.0",
-    "next": "16.0.10",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.1",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^5.1.2",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.5",
+    "@nx/eslint": "22.5.2",
+    "@nx/next": "22.5.2",
+    "@nx/vitest": "22.5.2",
     "husky": "^9.1.7",
-    "jsdom": "^27.4.0",
-    "tailwindcss": "^4",
-    "typescript": "^5",
-    "vitest": "^4.0.16"
+    "nx": "22.5.2",
+    "typescript": "^5"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "packageManager": "pnpm@10.18.0"
+  "packageManager": "pnpm@10.18.0",
+  "nx": {}
 }

@@ -46,3 +46,8 @@ next-env.d.ts
 
 # turbo
 .turbo
+
+# nx
+.nx/cache
+.nx/workspace-data
+vitest.config.*.timestamp*

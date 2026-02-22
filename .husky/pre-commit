@@ -1,1 +1,1 @@
-pnpm test
+npx nx run-many -t test:run
