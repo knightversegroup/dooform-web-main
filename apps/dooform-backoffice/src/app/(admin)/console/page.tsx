@@ -76,15 +76,17 @@ export default function ConsolePage() {
 
       try {
         switch (activeTab) {
-          case "datatypes":
+          case "datatypes": {
             const types = await apiClient.getConfigurableDataTypes();
             setDataTypes(types);
             break;
-          case "filters":
+          }
+          case "filters": {
             const filters = await apiClient.getFilterCategories();
             setFilterCategories(filters);
             break;
-          case "doctypes":
+          }
+          case "doctypes": {
             const [docTypes, templatesRes] = await Promise.all([
               apiClient.getDocumentTypes(),
               apiClient.getAllTemplates(),
@@ -92,6 +94,7 @@ export default function ConsolePage() {
             setDocumentTypes(docTypes);
             setTemplates(templatesRes.templates || []);
             break;
+          }
         }
       } catch (err) {
         logger.error("ConsolePage", `Failed to load ${activeTab}:`, err);
@@ -123,18 +126,20 @@ export default function ConsolePage() {
     setError(null);
     try {
       switch (activeTab) {
-        case "datatypes":
+        case "datatypes": {
           await apiClient.initializeDefaultDataTypes();
           const types = await apiClient.getConfigurableDataTypes();
           setDataTypes(types);
           setSuccess("Initialized default data types");
           break;
-        case "filters":
+        }
+        case "filters": {
           await apiClient.initializeDefaultFilters();
           const filters = await apiClient.getFilterCategories();
           setFilterCategories(filters);
           setSuccess("Initialized default filters");
           break;
+        }
       }
     } catch (err) {
       setError(`Failed to initialize: ${err instanceof Error ? err.message : "Unknown error"}`);

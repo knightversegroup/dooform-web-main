@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Users, ChevronRight, Shield, User, Mail, LayoutGrid, List } from 'lucide-react';
+import { Search, Users, ChevronRight, Shield, LayoutGrid, List } from 'lucide-react';
 import { apiClient } from '@dooform/shared/api/client';
 import type { UserListItem, Role } from '@dooform/shared/auth/types';
 import { LogoLoaderInline } from '@dooform/shared';
@@ -54,7 +54,6 @@ function UserCard({ user, onManage, onDelete }: {
   onDelete: () => void;
 }) {
   const displayName = user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ไม่ระบุชื่อ';
-  const isAdmin = user.roles.includes('admin');
 
   return (
     <div className="bg-white border border-gray-200 rounded-sm hover:border-gray-300 hover:shadow-sm transition-all group">
@@ -255,7 +254,7 @@ function UserRow({ user, onManage, onDelete }: {
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<UserListItem[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
