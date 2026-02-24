@@ -268,6 +268,9 @@ importers:
       gsap:
         specifier: '>=3'
         version: 3.14.2
+      lucide-react:
+        specifier: '>=0.400'
+        version: 0.555.0(react@19.2.0)
       next:
         specifier: '>=16'
         version: 16.0.10(@babel/core@7.28.5)(@playwright/test@1.58.2)(babel-plugin-macros@3.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.97.3)
