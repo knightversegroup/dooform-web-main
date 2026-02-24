@@ -21,10 +21,10 @@ export function StepIndicator({
   return (
     <div className="border-b border-[#d9d9d9] flex flex-col gap-[10px] items-start justify-center p-4 w-full">
       <div className="flex flex-col gap-[2px] items-start w-full">
-        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#171717] text-sm">
+        <p className="text-[#171717] text-sm">
           {currentStepConfig?.label}
         </p>
-        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-xl text-black">
+        <p className="font-semibold text-xl text-black">
           {currentStepConfig?.title}
         </p>
       </div>

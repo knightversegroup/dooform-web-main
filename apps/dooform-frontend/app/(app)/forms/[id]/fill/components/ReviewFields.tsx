@@ -65,11 +65,11 @@ const ReviewField = memo(function ReviewField({
   return (
     <div className="flex flex-col gap-2 items-start w-full">
       <div className="flex flex-col gap-[2px] items-start w-full">
-        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base">
+        <p className="font-semibold text-[#171717] text-base">
           {displayLabel}
         </p>
         {description && (
-          <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#797979] text-sm">
+          <p className="text-[#797979] text-sm">
             {description}
           </p>
         )}
@@ -77,8 +77,7 @@ const ReviewField = memo(function ReviewField({
       <div className="flex items-start w-full opacity-50">
         <div
           className="
-            font-['IBM_Plex_Sans_Thai',sans-serif]
-            bg-[#f0f0f0]
+                       bg-[#f0f0f0]
             border-b-2 border-[#5b5b5b] border-l-0 border-r-0 border-t-0
             px-4 py-[13px]
             text-base
@@ -109,15 +108,14 @@ const ReviewField = memo(function ReviewField({
                 className="flex flex-col gap-2 items-start w-full"
               >
                 <div className="flex flex-col gap-[2px] items-start w-full">
-                  <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-medium text-[#171717] text-sm">
+                  <p className="font-medium text-[#171717] text-sm">
                     {childLabel}
                   </p>
                 </div>
                 <div className="flex items-start w-full opacity-50">
                   <div
                     className="
-                      font-['IBM_Plex_Sans_Thai',sans-serif]
-                      bg-[#f0f0f0]
+                                           bg-[#f0f0f0]
                       border-b-2 border-[#5b5b5b] border-l-0 border-r-0 border-t-0
                       px-4 py-[10px]
                       text-sm
@@ -179,7 +177,7 @@ export function ReviewFields({
           {groupedSections.length > 0 ? (
             groupedSections.map((section) => (
               <div key={section.name} className="w-full">
-                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
+                <p className="font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
                   {section.name}
                 </p>
                 <div className="flex flex-col gap-4">

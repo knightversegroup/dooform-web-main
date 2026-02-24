@@ -30,7 +30,7 @@ export function DownloadSection({
           <div className="flex flex-col gap-2 items-start w-full">
             <label
               htmlFor="file-type-select"
-              className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base"
+              className="font-semibold text-[#171717] text-base"
             >
               เลือกประเภทไฟล์
             </label>
@@ -42,8 +42,7 @@ export function DownloadSection({
                   onFileTypeChange(e.target.value as "docx" | "pdf")
                 }
                 className="
-                  font-['IBM_Plex_Sans_Thai',sans-serif]
-                  bg-[#f0f0f0]
+                                   bg-[#f0f0f0]
                   border-b-2 border-[#5b5b5b] border-l-0 border-r-0 border-t-0
                   px-4 py-[13px] pr-10
                   text-base
@@ -73,7 +72,7 @@ export function DownloadSection({
             >
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
-                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-green-700">
+                <p className="text-green-700">
                   เอกสารพร้อมให้ดาวน์โหลดแล้ว
                 </p>
               </div>
