@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../libs/shared/src/**/*.tsx";
+@source "../../../libs/shared/src/**/*.tsx";
 
 :root {
     color-scheme: light only;
