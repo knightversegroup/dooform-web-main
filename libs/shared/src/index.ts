@@ -63,3 +63,14 @@ export type { GroupedSection, FieldGroup, EntityWithGroups } from './utils/field
 
 export { logger } from './utils/logger';
 export type { LogLevel, LoggerConfig } from './utils/logger';
+
+// Components - UI
+export { Button } from './components/ui/Button';
+export { Input } from './components/ui/Input';
+
+// Components - Feedback
+export { default as LogoLoader } from './components/feedback/LogoLoader';
+export { default as LogoLoaderInline } from './components/feedback/LogoLoaderInline';
+
+// Components - Auth
+export { RoleProtectedRoute, AdminOnlyRoute, AccessDenied, QuotaExhausted } from './components/auth/RoleProtectedRoute';

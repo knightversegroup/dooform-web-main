@@ -15,8 +15,6 @@ import {
   FolderOpen,
   LucideIcon,
   GripVertical,
-  Settings,
-  Shield,
   Coins,
 } from "lucide-react";
 import { useSidebar } from "./hooks/useSidebar";
@@ -67,18 +65,6 @@ const MAIN_NAV: NavItem[] = [
     //],
   //},
 //];
-
-// Settings consolidated into a single Console page
-const SETTINGS_NAV: NavItem = {
-  label: "Console",
-  href: "/console",
-  icon: Settings,
-};
-
-// Admin navigation (only visible to admins)
-const ADMIN_NAV: NavItem[] = [
-  { label: "จัดการผู้ใช้", href: "/admin/users", icon: Users },
-];
 
 const WORKSPACE_NAV: NavItem[] = [
   { label: "สมาชิก", href: "/workspace/members", icon: Users },
@@ -390,41 +376,6 @@ export default function Sidebar() {
               </li>
             ))}*/}
 
-            {/* Admin Section - Only visible to admins */}
-            {isAdmin && (
-              <>
-                {!isCollapsed && (
-                  <li className="px-3 pt-4 pb-2">
-                    <div className="text-sm font-medium text-neutral-400 flex items-center gap-2">
-                      <Shield className="w-3.5 h-3.5" />
-                      <span>ผู้ดูแลระบบ</span>
-                    </div>
-                  </li>
-                )}
-                {isCollapsed && (
-                  <li className="pt-4 pb-2">
-                    <div className="w-6 h-px bg-neutral-200" />
-                  </li>
-                )}
-                {/* Console - Admin settings page */}
-                <li>
-                  <NavLink
-                    item={SETTINGS_NAV}
-                    isActive={isActivePath(pathname, SETTINGS_NAV.href)}
-                    isCollapsed={isCollapsed}
-                  />
-                </li>
-                {ADMIN_NAV.map((item) => (
-                  <li key={item.href}>
-                    <NavLink
-                      item={item}
-                      isActive={isActivePath(pathname, item.href)}
-                      isCollapsed={isCollapsed}
-                    />
-                  </li>
-                ))}
-              </>
-            )}
           </ul>
         </nav>
 

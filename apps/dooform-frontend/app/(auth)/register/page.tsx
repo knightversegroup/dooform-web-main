@@ -8,7 +8,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@dooform/shared/firebase/config";
 import { useAuth } from "@dooform/shared/auth/hooks";
-import LogoLoader from "@/components/feedback/LogoLoader";
+import { LogoLoader } from "@dooform/shared";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";

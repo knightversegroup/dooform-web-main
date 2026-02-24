@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@dooform/shared/auth/hooks";
-import LogoLoader from "@/components/feedback/LogoLoader";
+import { LogoLoader } from "@dooform/shared";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();

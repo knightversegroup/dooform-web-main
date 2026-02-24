@@ -52,7 +52,7 @@ import {
   FieldTypeSuggestionResponse,
 } from './types';
 
-class ApiClient {
+export class ApiClient {
   private baseUrl: string;
   private accessToken: string | null = null;
   private refreshTokenCallback: (() => Promise<void>) | null = null;

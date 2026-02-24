@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft, Shield, User, X, Plus, RotateCcw } from 'lucide-react';
 import { apiClient } from '@dooform/shared/api/client';
 import type { UserListItem, Role, QuotaTransaction } from '@dooform/shared/auth/types';
-import LogoLoaderInline from '@/components/feedback/LogoLoaderInline';
+import { LogoLoaderInline } from '@dooform/shared';
 
 // ============================================================================
 // Sub-components

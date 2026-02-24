@@ -10,6 +10,8 @@
   },
   "peerDependencies": {
     "firebase": ">=12",
+    "gsap": ">=3",
+    "@gsap/react": ">=2",
     "next": ">=16",
     "react": ">=19"
   },

@@ -26,8 +26,7 @@ import {
 import { apiClient } from "@dooform/shared/api/client";
 import { Template, TemplateType, Tier, TemplateUpdateData, FieldDefinition, MergeableGroup, DocumentType, FilterCategory, ConfigurableDataType, ConfigurableInputType, FieldTypeSuggestion } from "@dooform/shared/api/types";
 import { detectMergeableGroups, createMergedFieldDefinition } from "@dooform/shared/utils/fieldTypes";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button, Input } from "@dooform/shared";
 import { UnifiedFieldEditor } from "@/components/ui/UnifiedFieldEditor";
 import { useAuth } from "@dooform/shared/auth/hooks";
 import { useTemplate } from "../hooks/useTemplate";

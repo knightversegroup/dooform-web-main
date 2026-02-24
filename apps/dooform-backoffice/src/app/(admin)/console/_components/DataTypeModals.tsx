@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import { apiClient } from "@dooform/shared/api/client";
 import { ConfigurableDataType } from "@dooform/shared/api/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@dooform/shared";
 import { INPUT_TYPE_OPTIONS, LOCATION_OUTPUT_FORMAT_OPTIONS } from "./constants";
 import { parseOptionsToLines, linesToOptionsString } from "./utils";
 import { DigitFormatBuilder } from "./DigitFormatBuilder";

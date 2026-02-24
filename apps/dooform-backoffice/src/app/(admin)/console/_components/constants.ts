@@ -17,14 +17,14 @@ export const INPUT_TYPE_OPTIONS = [
   { value: 'digit', label: 'Digit Blocks (OTP, License Plate)' },
 ];
 
-// Location output format options (Sub-district → District → Province order)
+// Location output format options (Sub-district -> District -> Province order)
 export const LOCATION_OUTPUT_FORMAT_OPTIONS = [
   { value: 'subdistrict', label: 'Sub-district only', description: 'name_eng3 Sub-district' },
   { value: 'district', label: 'District only', description: 'name_eng2 District' },
   { value: 'province', label: 'Province only', description: 'name_eng1 Province' },
   { value: 'district_subdistrict', label: 'Sub-district + District', description: 'name_eng3 Sub-district, name_eng2 District' },
   { value: 'province_district', label: 'District + Province', description: 'name_eng2 District, name_eng1 Province' },
-  { value: 'all_english', label: 'All (Sub-district → District → Province)', description: 'name_eng3 Sub-district, name_eng2 District, name_eng1 Province' },
+  { value: 'all_english', label: 'All (Sub-district -> District -> Province)', description: 'name_eng3 Sub-district, name_eng2 District, name_eng1 Province' },
 ];
 
 export interface TabConfig {

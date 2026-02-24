@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Users, ChevronRight, Shield, User, Mail, LayoutGrid, List } from 'lucide-react';
 import { apiClient } from '@dooform/shared/api/client';
 import type { UserListItem, Role } from '@dooform/shared/auth/types';
-import LogoLoaderInline from '@/components/feedback/LogoLoaderInline';
+import { LogoLoaderInline } from '@dooform/shared';
 
 // ============================================================================
 // Types
@@ -420,7 +420,7 @@ export default function AdminUsersPage() {
               <UserCard
                 key={user.id}
                 user={user}
-                onManage={() => router.push(`/admin/users/${user.id}`)}
+                onManage={() => router.push(`/users/${user.id}`)}
                 onDelete={() => handleDeleteUser(user.id)}
               />
             ))}
@@ -443,7 +443,7 @@ export default function AdminUsersPage() {
               <UserRow
                 key={user.id}
                 user={user}
-                onManage={() => router.push(`/admin/users/${user.id}`)}
+                onManage={() => router.push(`/users/${user.id}`)}
                 onDelete={() => handleDeleteUser(user.id)}
               />
             ))}

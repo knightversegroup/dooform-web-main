@@ -2,8 +2,8 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@dooform/shared/auth/hooks';
-import type { RoleName } from '@dooform/shared/auth/types';
+import { useAuth } from '../../auth/hooks';
+import type { RoleName } from '../../auth/types';
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
