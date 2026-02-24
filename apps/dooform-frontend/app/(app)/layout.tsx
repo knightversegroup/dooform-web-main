@@ -6,7 +6,7 @@ import { useAuth } from "@dooform/shared/auth/hooks";
 import Sidebar from "@/components/layout/Sidebar";
 import { SidebarProvider } from "@/components/layout/SidebarContext";
 import Navbar from "@/components/layout/Navbar";
-import LogoLoader from "@/components/feedback/LogoLoader";
+import { LogoLoader } from "@dooform/shared";
 
 // Main content component 
 function MainContent({ children }: { children: React.ReactNode }) {

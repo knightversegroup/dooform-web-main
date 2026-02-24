@@ -20,8 +20,7 @@ import {
   Template,
   SuggestedGroup,
 } from "@dooform/shared/api/types";
-import { Button } from "@/components/ui/Button";
-import { useAuth, useIsAdmin } from "@dooform/shared/auth/hooks";
+import { Button } from "@dooform/shared";
 import { logger } from "@dooform/shared/utils/logger";
 
 // Import from _components
@@ -38,8 +37,6 @@ import {
 export default function ConsolePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const isAdmin = useIsAdmin();
 
   // Tab state - read from URL or default to datatypes
   const tabFromUrl = searchParams.get("tab") as ConsoleTab | null;
@@ -71,36 +68,25 @@ export default function ConsolePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
-  // Auth check - requires admin role
-  useEffect(() => {
-    if (!authLoading) {
-      if (!isAuthenticated) {
-        router.replace("/login?redirect=/console");
-      } else if (!isAdmin) {
-        router.replace("/");
-      }
-    }
-  }, [authLoading, isAuthenticated, isAdmin, router]);
-
   // Load data for current tab
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
-
     const loadData = async () => {
       setLoading(true);
       setError(null);
 
       try {
         switch (activeTab) {
-          case "datatypes":
+          case "datatypes": {
             const types = await apiClient.getConfigurableDataTypes();
             setDataTypes(types);
             break;
-          case "filters":
+          }
+          case "filters": {
             const filters = await apiClient.getFilterCategories();
             setFilterCategories(filters);
             break;
-          case "doctypes":
+          }
+          case "doctypes": {
             const [docTypes, templatesRes] = await Promise.all([
               apiClient.getDocumentTypes(),
               apiClient.getAllTemplates(),
@@ -108,6 +94,7 @@ export default function ConsolePage() {
             setDocumentTypes(docTypes);
             setTemplates(templatesRes.templates || []);
             break;
+          }
         }
       } catch (err) {
         logger.error("ConsolePage", `Failed to load ${activeTab}:`, err);
@@ -118,7 +105,7 @@ export default function ConsolePage() {
     };
 
     loadData();
-  }, [activeTab, authLoading, isAuthenticated]);
+  }, [activeTab]);
 
   // Toggle expand/collapse
   const toggleExpand = (id: string) => {
@@ -139,18 +126,20 @@ export default function ConsolePage() {
     setError(null);
     try {
       switch (activeTab) {
-        case "datatypes":
+        case "datatypes": {
           await apiClient.initializeDefaultDataTypes();
           const types = await apiClient.getConfigurableDataTypes();
           setDataTypes(types);
           setSuccess("Initialized default data types");
           break;
-        case "filters":
+        }
+        case "filters": {
           await apiClient.initializeDefaultFilters();
           const filters = await apiClient.getFilterCategories();
           setFilterCategories(filters);
           setSuccess("Initialized default filters");
           break;
+        }
       }
     } catch (err) {
       setError(`Failed to initialize: ${err instanceof Error ? err.message : "Unknown error"}`);
@@ -205,15 +194,6 @@ export default function ConsolePage() {
       setTimeout(() => setSuccess(null), 3000);
     }
   };
-
-  // Loading state
-  if (authLoading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    );
-  }
 
   // Render content based on tab
   const renderContent = () => {

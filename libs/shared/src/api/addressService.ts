@@ -77,7 +77,7 @@ export interface AddressSelection {
   fullAddressEn: string;
 }
 
-class AddressService {
+export class AddressService {
   private cache: Map<string, AdministrativeBoundary[]> = new Map();
   private provincesCache: string[] | null = null;
 

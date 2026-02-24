@@ -12,8 +12,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { useAuth } from "@dooform/shared/auth/hooks";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button, Input } from "@dooform/shared";
 
 const DEFAULT_PROFILE_IMAGE = "/profile_default.webp";
 

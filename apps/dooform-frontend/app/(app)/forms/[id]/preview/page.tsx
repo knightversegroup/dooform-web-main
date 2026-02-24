@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { ArrowLeft, Loader2, AlertCircle, FileText } from "lucide-react";
 import { apiClient } from "@dooform/shared/api/client";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@dooform/shared";
 
 interface PageProps {
     params: Promise<{ id: string }>;

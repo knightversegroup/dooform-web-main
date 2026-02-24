@@ -12,7 +12,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import LogoLoaderInline from "@/components/feedback/LogoLoaderInline";
+import { LogoLoaderInline } from "@dooform/shared";
 import { apiClient } from "@dooform/shared/api/client";
 import { FilterCategory, Template } from "@dooform/shared/api/types";
 

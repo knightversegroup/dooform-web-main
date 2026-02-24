@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@dooform/shared/api/client";
 import { useAuth } from "@dooform/shared/auth/hooks";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@dooform/shared";
 
 interface DocumentHistory {
     id: string;
