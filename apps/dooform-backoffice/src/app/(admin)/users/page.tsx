@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Users, ChevronRight, Shield, LayoutGrid, List } from 'lucide-react';
+import { Search, Users, ChevronRight, LayoutGrid, List } from 'lucide-react';
 import { apiClient } from '@dooform/shared/api/client';
 import type { UserListItem, Role } from '@dooform/shared/auth/types';
 import { LogoLoaderInline } from '@dooform/shared';
@@ -19,7 +19,7 @@ type ViewMode = 'grid' | 'list';
 
 function LoadingState() {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
+    <div className="flex items-center justify-center py-20">
       <LogoLoaderInline size="lg" />
     </div>
   );
@@ -27,9 +27,9 @@ function LoadingState() {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+    <div className="flex flex-col items-center justify-center py-20 text-center">
       <p className="text-sm text-red-600 mb-4">{message}</p>
-      <button onClick={onRetry} className="text-sm text-[#000091] hover:underline font-medium">
+      <button onClick={onRetry} className="text-sm text-blue-600 hover:underline font-medium">
         ลองใหม่อีกครั้ง
       </button>
     </div>
@@ -39,12 +39,63 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center col-span-full">
-      <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <Users className="w-6 h-6 text-gray-400" />
+      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+        <Users className="w-5 h-5 text-gray-400" />
       </div>
-      <p className="text-gray-900 font-medium">ไม่พบผู้ใช้</p>
+      <p className="text-sm font-medium text-gray-900">ไม่พบผู้ใช้</p>
       <p className="text-sm text-gray-500 mt-1">ลองปรับคำค้นหา</p>
     </div>
+  );
+}
+
+function UserAvatar({ name, pictureUrl, size = 'md' }: { name: string; pictureUrl?: string | null; size?: 'sm' | 'md' }) {
+  const dims = size === 'sm' ? 'w-9 h-9' : 'w-10 h-10';
+  const textSize = size === 'sm' ? 'text-sm' : 'text-base';
+
+  if (pictureUrl) {
+    return (
+      <img
+        src={pictureUrl}
+        alt={name}
+        className={`${dims} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${dims} rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0`}>
+      <span className={`text-blue-600 font-medium ${textSize}`}>
+        {name.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  );
+}
+
+function RoleBadge({ role }: { role: string }) {
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+        role === 'admin'
+          ? 'bg-blue-100 text-blue-700'
+          : 'bg-gray-100 text-gray-600'
+      }`}
+    >
+      {role === 'admin' ? 'ผู้ดูแล' : 'ผู้ใช้'}
+    </span>
+  );
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+        active
+          ? 'bg-green-50 text-green-700'
+          : 'bg-red-50 text-red-700'
+      }`}
+    >
+      {active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+    </span>
   );
 }
 
@@ -56,25 +107,12 @@ function UserCard({ user, onManage, onDelete }: {
   const displayName = user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ไม่ระบุชื่อ';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-sm hover:border-gray-300 hover:shadow-sm transition-all group">
+    <div className="bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all group">
       <div className="p-5">
-        {/* User Avatar & Name */}
         <div className="flex items-center gap-3 mb-4">
-          {user.picture_url ? (
-            <img
-              src={user.picture_url}
-              alt={displayName}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-[#000091]/10 flex items-center justify-center">
-              <span className="text-[#000091] font-medium text-lg">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <UserAvatar name={displayName} pictureUrl={user.picture_url} />
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 truncate">
+            <h3 className="text-sm font-medium text-gray-900 truncate">
               {displayName}
             </h3>
             <p className="text-sm text-gray-500 truncate">
@@ -83,65 +121,38 @@ function UserCard({ user, onManage, onDelete }: {
           </div>
         </div>
 
-        {/* Roles */}
-        <div className="flex gap-1 flex-wrap mb-4">
+        <div className="flex gap-1.5 flex-wrap mb-3">
           {user.roles.map((role) => (
-            <span
-              key={role}
-              className={`px-2 py-1 text-xs font-medium rounded ${
-                role === 'admin'
-                  ? 'bg-[#000091] text-white'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              {role === 'admin' ? 'ผู้ดูแล' : 'ผู้ใช้'}
-            </span>
+            <RoleBadge key={role} role={role} />
           ))}
+          <StatusBadge active={user.is_active} />
         </div>
 
-        {/* Quota & Status */}
         <div className="flex items-center justify-between text-sm mb-4">
-          <div className="text-gray-600">
-            <span className="font-medium">โควต้า:</span>{' '}
+          <div className="text-gray-500">
+            โควต้า:{' '}
             {user.quota ? (
-              <span>
-                <span className="text-gray-900">{user.quota.remaining}</span>
-                <span className="text-gray-400"> / {user.quota.total}</span>
-              </span>
+              <span className="text-gray-900 font-medium">{user.quota.remaining}<span className="text-gray-400">/{user.quota.total}</span></span>
             ) : (
               <span className="text-gray-400">N/A</span>
             )}
           </div>
-          <span
-            className={`px-2 py-1 text-xs rounded ${
-              user.is_active
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {user.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
-          </span>
+          <span className="text-xs text-gray-400 capitalize">{user.auth_provider}</span>
         </div>
 
-        {/* Provider Badge */}
-        <div className="flex items-center justify-between">
-          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded capitalize">
-            {user.auth_provider}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={onManage}
-              className="px-3 py-1.5 text-sm bg-[#000091] text-white rounded hover:bg-[#000091]/90 transition-colors"
-            >
-              จัดการ
-            </button>
-            <button
-              onClick={onDelete}
-              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
-            >
-              ลบ
-            </button>
-          </div>
+        <div className="flex gap-2 pt-3 border-t border-gray-100">
+          <button
+            onClick={onManage}
+            className="flex-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+          >
+            จัดการ
+          </button>
+          <button
+            onClick={onDelete}
+            className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+          >
+            ลบ
+          </button>
         </div>
       </div>
     </div>
@@ -156,50 +167,28 @@ function UserRow({ user, onManage, onDelete }: {
   const displayName = user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ไม่ระบุชื่อ';
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors group">
-      {/* Avatar */}
-      {user.picture_url ? (
-        <img
-          src={user.picture_url}
-          alt={displayName}
-          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-        />
-      ) : (
-        <div className="w-10 h-10 rounded-full bg-[#000091]/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-[#000091] font-medium">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-        </div>
-      )}
+    <div
+      className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group cursor-pointer"
+      onClick={onManage}
+    >
+      <UserAvatar name={displayName} pictureUrl={user.picture_url} size="sm" />
 
-      {/* Name & Email */}
       <div className="flex-1 min-w-0">
-        <h3 className="text-base font-medium text-gray-900 group-hover:text-[#000091] transition-colors truncate">
+        <h3 className="text-sm font-medium text-gray-900 truncate">
           {displayName}
         </h3>
-        <p className="text-sm text-gray-500 truncate">
+        <p className="text-xs text-gray-500 truncate">
           {user.email || 'ไม่มีอีเมล'}
         </p>
       </div>
 
-      {/* Roles */}
-      <div className="flex gap-1 flex-shrink-0 w-24">
+      <div className="hidden md:flex gap-1.5 flex-shrink-0">
         {user.roles.map((role) => (
-          <span
-            key={role}
-            className={`px-2 py-1 text-xs font-medium rounded ${
-              role === 'admin'
-                ? 'bg-[#000091] text-white'
-                : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            {role === 'admin' ? 'ผู้ดูแล' : 'ผู้ใช้'}
-          </span>
+          <RoleBadge key={role} role={role} />
         ))}
       </div>
 
-      {/* Quota */}
-      <div className="text-sm text-gray-600 w-30 flex-shrink-0 text-center">
+      <div className="hidden lg:block text-sm text-gray-500 w-20 flex-shrink-0 text-center">
         {user.quota ? (
           <span>
             <span className="font-medium text-gray-900">{user.quota.remaining}</span>
@@ -210,39 +199,26 @@ function UserRow({ user, onManage, onDelete }: {
         )}
       </div>
 
-      {/* Provider */}
-      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded capitalize flex-shrink-0">
-        {user.auth_provider}
-      </span>
+      <div className="hidden lg:block flex-shrink-0">
+        <StatusBadge active={user.is_active} />
+      </div>
 
-      {/* Status */}
-      <span
-        className={`px-2 py-1 text-xs rounded flex-shrink-0 ${
-          user.is_active
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
-        }`}
-      >
-        {user.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
-      </span>
-
-      {/* Actions */}
-      <div className="flex gap-2 flex-shrink-0 w-32">
+      <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={onManage}
-          className="px-3 py-1.5 text-sm bg-[#000091] text-white rounded hover:bg-[#000091]/90 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
         >
           จัดการ
         </button>
         <button
           onClick={onDelete}
-          className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+          className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-md transition-colors"
         >
           ลบ
         </button>
       </div>
 
-      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#000091] flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
     </div>
   );
 }
@@ -314,90 +290,59 @@ export default function AdminUsersPage() {
   const startIndex = (page - 1) * itemsPerPage;
   const endIndex = Math.min(page * itemsPerPage, total);
 
-  // Loading state
-  if (loading && users.length === 0) {
-    return (
-      <div className="min-h-screen bg-white font-sans">
-        <LoadingState />
-      </div>
-    );
-  }
-
-  // Error state
-  if (error && users.length === 0) {
-    return (
-      <div className="min-h-screen bg-white font-sans">
-        <ErrorState message={error} onRetry={fetchUsers} />
-      </div>
-    );
-  }
+  if (loading && users.length === 0) return <LoadingState />;
+  if (error && users.length === 0) return <ErrorState message={error} onRetry={fetchUsers} />;
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div>
       {/* Header */}
-      <div className="border-b border-gray-200 bg-gray-50">
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3 mb-1">
-            <Shield className="w-6 h-6 text-[#000091]" />
-            <h1 className="text-xl font-semibold text-gray-900">จัดการผู้ใช้</h1>
-          </div>
-          <p className="text-sm text-gray-500 ml-9">
-            จัดการผู้ใช้, บทบาท, และโควต้า
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">จัดการผู้ใช้</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          จัดการผู้ใช้, บทบาท, และโควต้า
+        </p>
       </div>
 
-      {/* Search Bar */}
-      <div className="border-b border-gray-200 p-4">
-        <form onSubmit={handleSearch}>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+        <form onSubmit={handleSearch} className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="ค้นหาด้วยอีเมลหรือชื่อ..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-[#000091] focus:border-transparent text-sm"
+              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             />
           </div>
         </form>
-      </div>
 
-      {/* Results Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <span className="text-sm text-gray-600">
-          {total > 0 ? `${startIndex + 1} – ${endIndex} จาก ${total} ผู้ใช้` : 'ไม่พบผู้ใช้'}
-        </span>
-        <div className="flex items-center gap-4">
-          {/* Items per page */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">แสดง:</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setPage(1);
-              }}
-              className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#000091]"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setPage(1);
+            }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center border border-gray-300 rounded-sm overflow-hidden">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 ${viewMode === 'grid' ? 'bg-[#000091] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-400 hover:text-gray-600'}`}
               title="มุมมองการ์ด"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 ${viewMode === 'list' ? 'bg-[#000091] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-400 hover:text-gray-600'}`}
               title="มุมมองรายการ"
             >
               <List className="w-4 h-4" />
@@ -406,57 +351,47 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Results */}
-      <div className="p-4">
-        {loading ? (
-          <LoadingState />
-        ) : users.length === 0 ? (
-          <EmptyState />
-        ) : viewMode === 'grid' ? (
-          /* Grid View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {users.map((user) => (
-              <UserCard
-                key={user.id}
-                user={user}
-                onManage={() => router.push(`/users/${user.id}`)}
-                onDelete={() => handleDeleteUser(user.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          /* List View */
-          <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
-            {/* Table Header */}
-            <div className="flex items-center gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-600">
-              <div className="w-10 flex-shrink-0"></div>
-              <div className="flex-1">ผู้ใช้</div>
-              <div className="w-24 flex-shrink-0">บทบาท</div>
-              <div className="w-30 flex-shrink-0 text-center">โควต้า</div>
-              <div className="flex-shrink-0">Provider</div>
-              <div className="flex-shrink-0">สถานะ</div>
-              <div className="w-32 flex-shrink-0">การดำเนินการ</div>
-              <div className="w-5 flex-shrink-0"></div>
-            </div>
-            {users.map((user) => (
-              <UserRow
-                key={user.id}
-                user={user}
-                onManage={() => router.push(`/users/${user.id}`)}
-                onDelete={() => handleDeleteUser(user.id)}
-              />
-            ))}
-          </div>
-        )}
+      {/* Result count */}
+      <div className="text-sm text-gray-500 mb-3">
+        {total > 0 ? `${startIndex + 1}–${endIndex} จาก ${total} ผู้ใช้` : 'ไม่พบผู้ใช้'}
       </div>
+
+      {/* Results */}
+      {loading ? (
+        <LoadingState />
+      ) : users.length === 0 ? (
+        <EmptyState />
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {users.map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              onManage={() => router.push(`/users/${user.id}`)}
+              onDelete={() => handleDeleteUser(user.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {users.map((user) => (
+            <UserRow
+              key={user.id}
+              user={user}
+              onManage={() => router.push(`/users/${user.id}`)}
+              onDelete={() => handleDeleteUser(user.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 px-4 py-6 border-t border-gray-200">
+        <div className="flex items-center justify-center gap-1.5 pt-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ก่อนหน้า
           </button>
@@ -475,10 +410,10 @@ export default function AdminUsersPage() {
               <button
                 key={pageNum}
                 onClick={() => setPage(pageNum)}
-                className={`px-3 py-1.5 text-sm border rounded-sm ${
+                className={`px-3 py-1.5 text-sm rounded-lg ${
                   page === pageNum
-                    ? 'bg-[#000091] text-white border-[#000091]'
-                    : 'border-gray-300 hover:bg-gray-50'
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 {pageNum}
@@ -488,7 +423,7 @@ export default function AdminUsersPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ถัดไป
           </button>

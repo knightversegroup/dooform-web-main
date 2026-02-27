@@ -8,7 +8,6 @@ import {
   AlertCircle,
   CheckCircle,
   RefreshCw,
-  Settings,
   X,
   Wand2,
 } from "lucide-react";
@@ -246,100 +245,95 @@ export default function ConsolePage() {
   const currentTab = TABS.find((t) => t.id === activeTab);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-            <Settings className="w-6 h-6 text-gray-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Console</h1>
-            <p className="text-sm text-gray-500">จัดการการตั้งค่าระบบทั้งหมด</p>
-          </div>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Console</h1>
+        <p className="text-sm text-gray-500 mt-1">จัดการการตั้งค่าระบบทั้งหมด</p>
       </div>
 
       {/* Messages */}
       {error && (
-        <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
-          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+          <p className="text-sm text-red-700 flex-1">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
       {success && (
-        <div className="mx-6 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
           <p className="text-sm text-green-700">{success}</p>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6">
-        <div className="flex gap-1">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  isActive
-                    ? "text-blue-600 border-blue-600"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
+      {/* Tabs + Actions */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4">
+          <div className="flex gap-1">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    isActive
+                      ? "text-blue-600 border-blue-600"
+                      : "text-gray-500 border-transparent hover:text-gray-700"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2">
+            {activeTab !== "doctypes" && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleInitializeDefaults}
+                disabled={processingAction}
               >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tab Description & Actions */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <p className="text-sm text-gray-500">{currentTab?.description}</p>
-        <div className="flex items-center gap-2">
-          {activeTab !== "doctypes" && (
+                <RefreshCw className={`w-4 h-4 mr-2 ${processingAction ? "animate-spin" : ""}`} />
+                Initialize Defaults
+              </Button>
+            )}
+            {activeTab === "doctypes" && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAutoGroup}
+                disabled={processingAction}
+              >
+                <Wand2 className={`w-4 h-4 mr-2 ${processingAction ? "animate-spin" : ""}`} />
+                Auto-group
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
-              onClick={handleInitializeDefaults}
-              disabled={processingAction}
+              onClick={() => setShowCreateModal(true)}
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${processingAction ? "animate-spin" : ""}`} />
-              Initialize Defaults
+              <Plus className="w-4 h-4 mr-2" />
+              Create New
             </Button>
-          )}
-          {activeTab === "doctypes" && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleAutoGroup}
-              disabled={processingAction}
-            >
-              <Wand2 className={`w-4 h-4 mr-2 ${processingAction ? "animate-spin" : ""}`} />
-              Auto-group Templates
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New
-          </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">{renderContent()}</div>
+        {/* Tab Description */}
+        <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+          <p className="text-xs text-gray-500">{currentTab?.description}</p>
+        </div>
+
+        {/* Content */}
+        <div className="p-4">{renderContent()}</div>
+      </div>
 
       {/* Create Modal */}
       {activeTab === "datatypes" && (
