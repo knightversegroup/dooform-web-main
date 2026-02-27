@@ -1,12 +1,5 @@
-import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "./global.css";
 import { AuthProvider } from "@dooform/shared/auth/context";
-
-const ibmPlexSansThai = IBM_Plex_Sans_Thai({
-  variable: "--font-ibm-plex-sans-thai",
-  subsets: ["thai"],
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata = {
   title: "Dooform Backoffice",
@@ -20,7 +13,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th" className="light" style={{ colorScheme: "light" }}>
-      <body className={`${ibmPlexSansThai.variable} antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

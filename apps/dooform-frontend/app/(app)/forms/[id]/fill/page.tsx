@@ -314,7 +314,7 @@ export default function FillFormPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white font-['IBM_Plex_Sans_Thai',sans-serif]">
+    <div className="min-h-screen bg-white">
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
@@ -388,7 +388,7 @@ export default function FillFormPage({ params }: PageProps) {
                 <div className="bg-red-50 border-l-4 border-red-500 p-4" role="alert">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-red-600" aria-hidden="true" />
-                    <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-red-700 text-sm">
+                    <p className="text-red-700 text-sm">
                       {error}
                     </p>
                   </div>

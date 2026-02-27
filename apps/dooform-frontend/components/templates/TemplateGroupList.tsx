@@ -390,7 +390,7 @@ export default function TemplateGroupList() {
                 {/* Letter Header */}
                 <div
                   ref={(el) => { letterRefs.current[letter] = el; }}
-                  className="scroll-mt-[240px] text-[20px] font-semibold text-[#4d4d4d] border-b border-[#e6e6e6] py-[8px] mt-4"
+                  className="sticky top-[240px] z-[5] bg-white scroll-mt-[240px] text-[20px] font-semibold text-[#4d4d4d] border-b border-[#e6e6e6] py-[8px] mt-4"
                 >
                   {letter}
                 </div>

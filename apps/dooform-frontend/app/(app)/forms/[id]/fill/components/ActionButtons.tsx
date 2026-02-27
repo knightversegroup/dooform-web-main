@@ -38,8 +38,7 @@ export function ActionButtons({
       <button
         onClick={onGoToReview}
         className="
-          font-['IBM_Plex_Sans_Thai',sans-serif]
-          bg-[#000091]
+                   bg-[#000091]
           text-white
           px-[13px] py-[10px]
           text-base
@@ -66,8 +65,7 @@ export function ActionButtons({
           <button
             onClick={onGoToFill}
             className="
-              font-['IBM_Plex_Sans_Thai',sans-serif]
-              bg-[#f0f0f0]
+                           bg-[#f0f0f0]
               text-[#5b5b5b]
               px-[13px] py-[10px]
               text-base
@@ -81,8 +79,7 @@ export function ActionButtons({
             onClick={onConfirmAndProcess}
             disabled={processing || !canGenerate}
             className="
-              font-['IBM_Plex_Sans_Thai',sans-serif]
-              bg-[#000091]
+                           bg-[#000091]
               text-white
               px-[13px] py-[10px]
               text-base
@@ -114,8 +111,7 @@ export function ActionButtons({
         onClick={() => onDownload(selectedFileType)}
         disabled={!success}
         className="
-          font-['IBM_Plex_Sans_Thai',sans-serif]
-          bg-[#000091]
+                   bg-[#000091]
           text-white
           px-[13px] py-[10px]
           text-base

@@ -73,11 +73,11 @@ export const FormField = memo(function FormField({
   return (
     <div className="flex flex-col gap-2 items-start w-full">
       <div className="flex flex-col gap-[2px] items-start w-full">
-        <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-base">
+        <p className="font-semibold text-[#171717] text-base">
           {displayLabel}
         </p>
         {description && (
-          <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#797979] text-sm">
+          <p className="text-[#797979] text-sm">
             {description}
           </p>
         )}
@@ -117,11 +117,11 @@ export const FormField = memo(function FormField({
                 className="flex flex-col gap-2 items-start w-full"
               >
                 <div className="flex flex-col gap-[2px] items-start w-full">
-                  <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-medium text-[#171717] text-sm">
+                  <p className="font-medium text-[#171717] text-sm">
                     {childLabel}
                   </p>
                   {childDef.description && (
-                    <p className="font-['IBM_Plex_Sans_Thai',sans-serif] text-[#797979] text-xs">
+                    <p className="text-[#797979] text-xs">
                       {childDef.description}
                     </p>
                   )}

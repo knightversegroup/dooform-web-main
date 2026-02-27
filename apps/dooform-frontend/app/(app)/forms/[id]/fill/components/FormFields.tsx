@@ -86,7 +86,7 @@ export function FormFields({
             groupedSections.map((section) => (
               <div key={section.name} className="w-full">
                 {/* Section Label */}
-                <p className="font-['IBM_Plex_Sans_Thai',sans-serif] font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
+                <p className="font-semibold text-[#171717] text-sm mb-3 mt-4 first:mt-0">
                   {section.name}
                 </p>
                 <div className="flex flex-col gap-4">
